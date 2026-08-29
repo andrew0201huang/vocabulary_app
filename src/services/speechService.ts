@@ -8,8 +8,50 @@ export class SpeechService {
   private accumulated = '';
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // iOS Safari requires a silent utterance triggered inside a user gesture to unlock audio
+  private iosUnlocked = false;
+  private pendingSpeakArgs: { text: string; rate: number; pitch: number; voiceName?: string; resolve: () => void } | null = null;
+
   constructor() {
     this.initVoices();
+    this.setupIOSUnlock();
+  }
+
+  /** Call once on first user interaction (touch/click) to unlock audio on iOS */
+  public unlockAudio() {
+    if (this.iosUnlocked) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    // Speak an empty utterance to unlock
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    u.onend = () => {
+      this.iosUnlocked = true;
+      // If there's a queued speak, play it now
+      if (this.pendingSpeakArgs) {
+        const args = this.pendingSpeakArgs;
+        this.pendingSpeakArgs = null;
+        this.speakInternal(args.text, args.rate, args.pitch, args.voiceName).then(args.resolve);
+      }
+    };
+    window.speechSynthesis.speak(u);
+  }
+
+  private setupIOSUnlock() {
+    if (typeof window === 'undefined') return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isIOS) {
+      this.iosUnlocked = true; // Non-iOS: no unlock needed
+      return;
+    }
+    // On iOS: unlock on first user gesture anywhere on page
+    const unlock = () => {
+      this.unlockAudio();
+      window.removeEventListener('touchstart', unlock, true);
+      window.removeEventListener('click', unlock, true);
+    };
+    window.addEventListener('touchstart', unlock, { passive: true, capture: true });
+    window.addEventListener('click', unlock, { passive: true, capture: true });
   }
 
   // --- Web Speech API Synthesis (TTS) ---
@@ -33,7 +75,7 @@ export class SpeechService {
     return this.voices.filter((v) => v.lang.startsWith('en'));
   }
 
-  public speak(
+  private speakInternal(
     text: string,
     rate: number = 0.95,
     pitch: number = 1.0,
@@ -43,6 +85,10 @@ export class SpeechService {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
         resolve();
         return;
+      }
+      // iOS: resume suspended context (page visibility change can suspend it)
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
       }
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
@@ -60,14 +106,45 @@ export class SpeechService {
             (v.name.includes('Google') ||
               v.name.includes('Natural') ||
               v.name.includes('Samantha') ||
-              v.name.includes('Karen'))
+              v.name.includes('Karen') ||
+              v.name.includes('Nicky') ||      // iOS voice
+              v.name.includes('Daniel'))        // iOS voice
         );
         if (preferred) utterance.voice = preferred;
       }
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
       window.speechSynthesis.speak(utterance);
+
+      // iOS workaround: speechSynthesis sometimes stalls silently — resume it periodically
+      const resumeTimer = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          clearInterval(resumeTimer);
+          return;
+        }
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }, 250);
+      utterance.onend = () => { clearInterval(resumeTimer); resolve(); };
+      utterance.onerror = () => { clearInterval(resumeTimer); resolve(); };
     });
+  }
+
+  public speak(
+    text: string,
+    rate: number = 0.95,
+    pitch: number = 1.0,
+    voiceName?: string
+  ): Promise<void> {
+    if (!text) return Promise.resolve();
+    // iOS: if not yet unlocked by user gesture, queue the speak and resolve immediately (silent)
+    if (!this.iosUnlocked) {
+      return new Promise<void>((resolve) => {
+        this.pendingSpeakArgs = { text, rate, pitch, voiceName, resolve };
+      });
+    }
+    return this.speakInternal(text, rate, pitch, voiceName);
   }
 
   public stopSpeaking() {

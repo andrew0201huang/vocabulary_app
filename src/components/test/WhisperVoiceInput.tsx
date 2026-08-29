@@ -1,6 +1,8 @@
 /**
- * OfflineVoiceInput – record audio locally then upload to cloud speech API
- * Supports: Google Cloud Speech-to-Text v1 | OpenAI Whisper-1
+ * OfflineVoiceInput – unified record-then-recognize UI for all three engines:
+ *   - browser: MediaRecorder + concurrent Web Speech API (no upload needed)
+ *   - google:  MediaRecorder → upload to Google Cloud Speech-to-Text v1
+ *   - openai:  MediaRecorder → upload to OpenAI Whisper-1
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -51,12 +53,10 @@ const LETTER_MAP: Record<string, string> = {
 
 function parseLetters(text: string): string {
   const cleaned = text.toLowerCase().replace(/[^a-z\s-]/g, ' ').replace(/\s+/g, ' ').trim();
-  // If it looks like a whole word attempt, keep it as-is
   const asWord = cleaned.replace(/\s/g, '');
+  // Whole word attempt (no spaces, multi-char)
   if (/^[a-z]{2,}$/.test(asWord) && !cleaned.includes(' ')) return asWord;
-  // Parse word-by-word
-  const words = cleaned.split(/\s+/);
-  return words.map(w => {
+  return cleaned.split(/\s+/).map(w => {
     if (w.length === 1 && /[a-z]/.test(w)) return w;
     if (LETTER_MAP[w]) return LETTER_MAP[w];
     return w.replace(/[^a-z]/g, '');
@@ -66,58 +66,48 @@ function parseLetters(text: string): string {
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = (reader.result as string).split(',')[1];
-      resolve(base64);
-    };
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
 }
 
-// ── Engine labels ─────────────────────────────────────────────────────────────
+// ── Engine metadata ───────────────────────────────────────────────────────────
 const ENGINE_LABEL: Record<VoiceSpeechEngine, string> = {
-  browser: '🌐 Chrome 瀏覽器即時辨識',
-  google:  '🔵 Google Speech-to-Text',
+  browser: '🌐 Chrome 語音辨識',
+  google:  '🔵 Google Speech API',
   openai:  '🟣 OpenAI Whisper',
 };
 
-// ── API callers ───────────────────────────────────────────────────────────────
+const ENGINE_STATUS_LABEL: Record<VoiceSpeechEngine, string> = {
+  browser: '辨識中（瀏覽器）...',
+  google:  'Google Speech 辨識中...',
+  openai:  'Whisper AI 辨識中...',
+};
+
+// ── Cloud API callers ─────────────────────────────────────────────────────────
 
 async function recognizeWithGoogle(audioBlob: Blob, apiKey: string): Promise<string> {
   const mimeType = audioBlob.type || 'audio/webm';
-  const encoding = mimeType.includes('mp4')  ? 'MP3'
-    : mimeType.includes('ogg')  ? 'OGG_OPUS'
-    : 'WEBM_OPUS';  // Chrome default
-
+  const encoding = mimeType.includes('mp4') ? 'MP3'
+    : mimeType.includes('ogg') ? 'OGG_OPUS'
+    : 'WEBM_OPUS';
   const audioBase64 = await blobToBase64(audioBlob);
-
   const body = {
     config: {
       encoding,
       languageCode: 'en-US',
       maxAlternatives: 1,
-      model: 'latest_short',          // optimised for <1-min clips
+      model: 'latest_short',
       enableAutomaticPunctuation: false,
-      speechContexts: [
-        {
-          phrases: Object.keys(LETTER_MAP),
-          boost: 15,                  // hint the model toward letter names
-        },
-      ],
+      speechContexts: [{ phrases: Object.keys(LETTER_MAP), boost: 15 }],
     },
     audio: { content: audioBase64 },
   };
-
   const res = await fetch(
     `https://speech.googleapis.com/v1/speech:recognize?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     if (res.status === 400 && (err?.error?.message as string)?.includes('API_KEY')) {
@@ -125,10 +115,8 @@ async function recognizeWithGoogle(audioBlob: Blob, apiKey: string): Promise<str
     }
     throw new Error(err?.error?.message || `Google Speech API 錯誤 (${res.status})`);
   }
-
   const data = await res.json();
-  const transcript: string = data.results?.[0]?.alternatives?.[0]?.transcript || '';
-  return parseLetters(transcript);
+  return parseLetters(data.results?.[0]?.alternatives?.[0]?.transcript || '');
 }
 
 async function recognizeWithOpenAI(audioBlob: Blob, apiKey: string): Promise<string> {
@@ -139,21 +127,74 @@ async function recognizeWithOpenAI(audioBlob: Blob, apiKey: string): Promise<str
   formData.append('model', 'whisper-1');
   formData.append('language', 'en');
   formData.append('prompt', 'Spell the word letter by letter, e.g. A P P L E. Or say the word directly.');
-
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
   });
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     if (res.status === 401) throw new Error('OpenAI API 金鑰無效，請在設定中更新。');
     throw new Error(err?.error?.message || `OpenAI Whisper API 錯誤 (${res.status})`);
   }
-
   const data = await res.json();
   return parseLetters(data.text?.trim() || '');
+}
+
+// ── Browser Web Speech recognition (runs concurrently during recording) ───────
+function recognizeWithBrowser(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      reject(new Error('您的瀏覽器不支援語音辨識，請改用 Chrome 或 Edge。'));
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    rec.maxAlternatives = 3;
+
+    let accumulated = '';
+
+    rec.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          const t = event.results[i][0]?.transcript?.toLowerCase() || '';
+          accumulated += parseLetters(t);
+        }
+      }
+    };
+
+    rec.onerror = (event: any) => {
+      const err = event.error;
+      // Ignore transient errors; network errors during stop are fine
+      if (err === 'no-speech' || err === 'aborted') return;
+      if (err === 'network') return; // will resolve with whatever we have
+      if (err === 'not-allowed') {
+        reject(new Error('請允許麥克風權限。'));
+      }
+    };
+
+    rec.onend = () => {
+      resolve(accumulated);
+    };
+
+    // Start recognition using the same stream from MediaRecorder
+    // Web Speech API always opens its own mic channel — we just start it alongside recording
+    try {
+      rec.start();
+    } catch {
+      reject(new Error('無法啟動語音辨識。'));
+    }
+
+    // Expose a stop handle on the promise itself (called when MediaRecorder.onstop fires)
+    (recognizeWithBrowser as any)._stopCurrentRec = () => {
+      try { rec.stop(); } catch { /* ignore */ }
+    };
+  });
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -176,6 +217,8 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Promise resolve/reject for browser recognition
+  const browserRecPromiseRef = useRef<Promise<string> | null>(null);
 
   const stopTimer = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -188,12 +231,17 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
 
   const stopRecording = useCallback(() => {
     stopTimer();
+    // Stop browser Web Speech recognition first (before MediaRecorder.stop → onstop)
+    if ((recognizeWithBrowser as any)._stopCurrentRec) {
+      (recognizeWithBrowser as any)._stopCurrentRec();
+      (recognizeWithBrowser as any)._stopCurrentRec = null;
+    }
     if (mediaRecorderRef.current?.state !== 'inactive') {
       mediaRecorderRef.current?.stop();
     }
   }, []);
 
-  // Reset when word changes
+  // Reset on word change
   useEffect(() => {
     stopRecording();
     stopStream();
@@ -202,6 +250,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
     setErrorMsg(null);
     setElapsedSec(0);
     setRawTranscript('');
+    browserRecPromiseRef.current = null;
   }, [targetWord]);
 
   useEffect(() => () => { stopRecording(); stopStream(); }, []);
@@ -212,7 +261,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const uploadAudio = useCallback(async (blob: Blob) => {
+  const processAudio = useCallback(async (blob: Blob, browserRecPromise: Promise<string> | null) => {
     setState('uploading');
     setErrorMsg(null);
     try {
@@ -221,6 +270,9 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
         result = await recognizeWithGoogle(blob, settings.googleSpeechApiKey);
       } else if (engine === 'openai' && settings.openaiApiKey) {
         result = await recognizeWithOpenAI(blob, settings.openaiApiKey);
+      } else if (engine === 'browser' && browserRecPromise) {
+        // Browser mode: just await the already-running Web Speech recognition result
+        result = await browserRecPromise;
       } else {
         throw new Error('尚未設定 API 金鑰，請前往設定頁面填入。');
       }
@@ -239,6 +291,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
     setRawTranscript('');
     setElapsedSec(0);
     chunksRef.current = [];
+    browserRecPromiseRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -246,9 +299,14 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : 'audio/webm';
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+
+      // For browser mode: start Web Speech recognition in parallel BEFORE MediaRecorder
+      let browserProm: Promise<string> | null = null;
+      if (engine === 'browser') {
+        browserProm = recognizeWithBrowser();
+        browserRecPromiseRef.current = browserProm;
+      }
 
       const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
@@ -257,8 +315,8 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
       recorder.onstop = async () => {
         stopStream();
         const blob = new Blob(chunksRef.current, { type: mimeType });
-        if (blob.size > 100) {
-          await uploadAudio(blob);
+        if (blob.size > 100 || engine === 'browser') {
+          await processAudio(blob, browserRecPromiseRef.current);
         } else {
           setState('idle');
         }
@@ -266,7 +324,6 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
 
       recorder.start(100);
       setState('recording');
-
       timerRef.current = setInterval(() => setElapsedSec(s => s + 1), 1000);
     } catch (err: any) {
       setState('error');
@@ -276,7 +333,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           : err.message || '無法存取麥克風，請確認裝置設定。'
       );
     }
-  }, [uploadAudio, stopStream]);
+  }, [engine, processAudio, stopStream]);
 
   const handleDeleteLast = () => setSpelledBuffer(p => p.slice(0, -1));
   const handleClear = () => setSpelledBuffer('');
@@ -318,15 +375,17 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           {state === 'recording' && (
             <>
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-              <span className="text-rose-300">錄音中... {elapsedSec}s　（說完後點 ■ 送出）</span>
+              <span className="text-rose-300">
+                錄音中... {elapsedSec}s
+                {engine === 'browser' && <span className="text-xs text-slate-400 ml-1">（說完點 ■ 停止）</span>}
+                {engine !== 'browser' && <span className="text-xs text-slate-400 ml-1">（說完後點 ■ 送出辨識）</span>}
+              </span>
             </>
           )}
           {state === 'uploading' && (
             <>
               <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-              <span className="text-indigo-300">
-                {engine === 'google' ? 'Google Speech' : 'Whisper AI'} 辨識中...
-              </span>
+              <span className="text-indigo-300">{ENGINE_STATUS_LABEL[engine]}</span>
             </>
           )}
           {state === 'done' && spelledBuffer && (
@@ -343,7 +402,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           {state === 'recording' ? (
             <button type="button" onClick={stopRecording} disabled={disabled}
               className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-xl animate-pulse ring-4 ring-rose-500/30 transition-all active:scale-95"
-              title="停止錄音並送出辨識">
+              title="停止錄音">
               <Square className="w-7 h-7 fill-current" />
             </button>
           ) : (
@@ -362,7 +421,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
             </button>
           )}
 
-          {/* Waveform animation */}
+          {/* Waveform */}
           {state === 'recording' && (
             <div className="flex items-center gap-0.5">
               {[3, 6, 8, 5, 7, 4, 6, 3].map((h, i) => (
@@ -378,7 +437,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           <span>逐字唸 <strong className="text-slate-300">A · P · P · L · E</strong> 或直接念出完整單字</span>
         </div>
 
-        {/* Recognized text display */}
+        {/* Recognized text */}
         <div className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-center">
           {spelledBuffer ? (
             <span className="font-mono text-xl font-bold text-indigo-300 tracking-widest uppercase">
@@ -391,7 +450,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           )}
         </div>
 
-        {/* Raw transcript debug (only in done state) */}
+        {/* Raw transcript debug */}
         {rawTranscript && state === 'done' && (
           <div className="w-full text-[10px] text-slate-600 text-left px-1">
             語音原文：「{rawTranscript}」
