@@ -87,7 +87,12 @@ export class StorageService {
       let loadedSettings = DEFAULT_SETTINGS;
       if (storedSettings) {
         try {
-          loadedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) };
+          const parsedSettings = JSON.parse(storedSettings);
+          loadedSettings = {
+            ...DEFAULT_SETTINGS,
+            ...parsedSettings,
+            googleClientId: parsedSettings.googleClientId || DEFAULT_SETTINGS.googleClientId,
+          };
         } catch {
           // ignore
         }
@@ -95,11 +100,16 @@ export class StorageService {
 
       if (stored) {
         const parsed = JSON.parse(stored) as StorageData;
+        const finalSettings = {
+          ...loadedSettings,
+          ...(parsed.settings || {}),
+          googleClientId: parsed.settings?.googleClientId || loadedSettings.googleClientId || DEFAULT_SETTINGS.googleClientId,
+        };
         this.data = {
           version: parsed.version || 1,
           words: parsed.words || [],
           roundHistory: parsed.roundHistory || [],
-          settings: { ...loadedSettings, ...(parsed.settings || {}) },
+          settings: finalSettings,
           lastSyncedAt: parsed.lastSyncedAt || null,
         };
       } else {
