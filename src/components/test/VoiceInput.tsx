@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Delete, CornerDownLeft, AlertCircle, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Delete, CornerDownLeft, AlertCircle, Sparkles, RotateCcw } from 'lucide-react';
 import { useSpeech } from '../../hooks/useSpeech';
 
 interface VoiceInputProps {
@@ -78,9 +78,19 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       )}
 
       {errorMessage && (
-        <div className="w-full max-w-md p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="w-full max-w-md p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleListening}
+            className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600 text-rose-200 text-xs font-bold shrink-0 flex items-center gap-1 transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>重試</span>
+          </button>
         </div>
       )}
 

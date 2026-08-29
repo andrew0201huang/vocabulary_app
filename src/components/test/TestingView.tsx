@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Volume2, HelpCircle, SkipForward, ArrowLeft, CheckCircle2, XCircle, RotateCcw, Headphones, Eye } from 'lucide-react';
 import { WordItem, RoundConfig, WordTestResult, RoundSummary, AppSettings, InputMode } from '../../types/vocabulary';
-import { calculateSpacedRepetition, getSpeedCategory } from '../../services/spacedRepetition';
+import { calculateSpacedRepetition, getSpeedCategory, isWordDueForReview } from '../../services/spacedRepetition';
 import { useSpeech } from '../../hooks/useSpeech';
 import { useAudioFx } from '../../hooks/useAudioFx';
 import { SpeedGauge } from './SpeedGauge';
@@ -92,9 +92,43 @@ export const TestingView: React.FC<TestingViewProps> = ({
       candidateWords = candidateWords.filter(w => w.tags.includes(config.customTag!));
     }
 
-    // Shuffle candidate words
-    const shuffled = [...candidateWords].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(shuffled.length, config.wordCount));
+    // Prioritized Intelligent Sampling:
+    // 1. Due words (need review according to SM-2 interval)
+    // 2. Struggling words (error / latency > slow threshold)
+    // 3. New words (never practiced)
+    // 4. Learning words
+    // 5. Familiar / Mastered words
+    const dueList = candidateWords.filter(w => isWordDueForReview(w)).sort(() => Math.random() - 0.5);
+    const dueIds = new Set(dueList.map(w => w.id));
+
+    const strugglingList = candidateWords
+      .filter(w => w.familiarity === 'struggling' && !dueIds.has(w.id))
+      .sort(() => Math.random() - 0.5);
+    const strugglingIds = new Set(strugglingList.map(w => w.id));
+
+    const newList = candidateWords
+      .filter(w => w.familiarity === 'new' && !dueIds.has(w.id) && !strugglingIds.has(w.id))
+      .sort(() => Math.random() - 0.5);
+    const newIds = new Set(newList.map(w => w.id));
+
+    const learningList = candidateWords
+      .filter(w => w.familiarity === 'learning' && !dueIds.has(w.id) && !strugglingIds.has(w.id) && !newIds.has(w.id))
+      .sort(() => Math.random() - 0.5);
+    const learningIds = new Set(learningList.map(w => w.id));
+
+    const familiarList = candidateWords
+      .filter(w => !dueIds.has(w.id) && !strugglingIds.has(w.id) && !newIds.has(w.id) && !learningIds.has(w.id))
+      .sort(() => Math.random() - 0.5);
+
+    const prioritizedCandidates = [
+      ...dueList,
+      ...strugglingList,
+      ...newList,
+      ...learningList,
+      ...familiarList,
+    ];
+
+    const selected = prioritizedCandidates.slice(0, Math.min(prioritizedCandidates.length, config.wordCount));
 
     const initialQueue: TestQueueItem[] = selected.map(word => ({
       word,

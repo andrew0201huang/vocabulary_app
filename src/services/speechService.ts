@@ -143,6 +143,8 @@ export class SpeechService {
         console.warn('Speech Recognition error event:', event.error);
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           onError?.('請允許瀏覽器麥克風權限以進行語音拼讀。');
+        } else if (event.error === 'network') {
+          onError?.('連線至語音伺服器逾時 (Network Error)。請確認網路連線正常，或點擊下方重新連線。');
         } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
           onError?.(`語音辨識提示：${event.error}`);
         }
