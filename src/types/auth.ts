@@ -1,3 +1,14 @@
+export type AuthType = 'local' | 'google';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email?: string;
+  avatar: string; // Emoji or image URL
+  authType: AuthType;
+  createdAt: string;
+}
+
 export interface GoogleUser {
   id?: string;
   name: string;
@@ -5,10 +16,11 @@ export interface GoogleUser {
   picture?: string;
 }
 
-export interface GoogleAuthState {
+export interface AuthState {
   isAuthenticated: boolean;
+  user: UserProfile | null;
+  authType: AuthType;
   accessToken: string | null;
   expiresAt: number | null;
-  user: GoogleUser | null;
   driveFileId: string | null;
 }

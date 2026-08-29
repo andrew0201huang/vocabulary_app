@@ -1,8 +1,8 @@
 import React from 'react';
-import { Zap, BookOpen, BarChart3, Settings, LogIn, LogOut } from 'lucide-react';
+import { Zap, BookOpen, BarChart3, Settings } from 'lucide-react';
 import { SyncStatusBadge } from '../sync/SyncStatusBadge';
 import { SyncStatus } from '../../types/vocabulary';
-import { GoogleAuthState } from '../../types/auth';
+import { AuthState } from '../../types/auth';
 
 export type TabType = 'test' | 'bank' | 'stats';
 
@@ -10,10 +10,9 @@ interface HeaderProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   syncStatus: SyncStatus;
-  authState: GoogleAuthState;
+  authState: AuthState;
   onSyncClick: () => void;
-  onLoginClick: () => void;
-  onLogoutClick: () => void;
+  onUserClick: () => void;
   onOpenSettings: () => void;
   dueWordCount: number;
 }
@@ -24,11 +23,12 @@ export const Header: React.FC<HeaderProps> = ({
   syncStatus,
   authState,
   onSyncClick,
-  onLoginClick,
-  onLogoutClick,
+  onUserClick,
   onOpenSettings,
   dueWordCount,
 }) => {
+  const user = authState.user;
+
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
@@ -106,44 +106,27 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </nav>
 
-        {/* User Auth & Settings */}
+        {/* User Profile & Settings */}
         <div className="flex items-center gap-2">
-          {authState.isAuthenticated && authState.user ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2 py-1">
-                {authState.user.picture ? (
-                  <img
-                    src={authState.user.picture}
-                    alt={authState.user.name}
-                    className="w-5 h-5 rounded-full"
-                  />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">
-                    {authState.user.name.charAt(0)}
-                  </div>
-                )}
-                <span className="text-xs font-semibold text-slate-200 hidden md:inline-block max-w-[90px] truncate">
-                  {authState.user.name}
-                </span>
-                <button
-                  onClick={onLogoutClick}
-                  className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition-colors"
-                  title="登出 Google 帳號"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={onLoginClick}
-              className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all"
-              title="使用 Google 帳號登入同步進度"
-            >
-              <LogIn className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Google 登入</span>
-            </button>
-          )}
+          {/* Clickable User Profile Pill */}
+          <button
+            onClick={onUserClick}
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl px-2.5 py-1.5 transition-all text-xs font-semibold text-slate-200"
+            title="點擊切換使用者或設定雲端同步"
+          >
+            {user?.avatar?.startsWith('http') ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="w-5 h-5 rounded-full"
+              />
+            ) : (
+              <span className="text-sm">{user?.avatar || '⚡'}</span>
+            )}
+            <span className="max-w-[85px] sm:max-w-[110px] truncate">
+              {user?.name || '一般使用者'}
+            </span>
+          </button>
 
           <button
             onClick={onOpenSettings}

@@ -11,6 +11,7 @@ import { WordEditModal } from './components/bank/WordEditModal';
 import { ImportExportModal } from './components/bank/ImportExportModal';
 import { StatsView } from './components/stats/StatsView';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { UserLoginModal } from './components/auth/UserLoginModal';
 import { useVocabulary } from './hooks/useVocabulary';
 import { useAuth } from './hooks/useAuth';
 import { RoundConfig, RoundSummary, WordItem } from './types/vocabulary';
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
   const [wordToEdit, setWordToEdit] = useState<WordItem | null>(null);
   const [isImportExportOpen, setIsImportExportOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isUserLoginModalOpen, setIsUserLoginModalOpen] = useState<boolean>(false);
 
   // Toast Notifications
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -63,17 +65,17 @@ export const App: React.FC = () => {
   const {
     authState,
     syncStatus,
-    login,
-    logout,
+    loginLocal,
+    loginGoogle,
     syncNow,
   } = useAuth();
 
   // Handle Google Drive sync when settings client ID is present
   useEffect(() => {
-    if (settings.googleClientId && !authState.isAuthenticated) {
+    if (settings.googleClientId && authState.authType === 'google') {
       // GIS will be ready on user interaction
     }
-  }, [settings.googleClientId, authState.isAuthenticated]);
+  }, [settings.googleClientId, authState.authType]);
 
   // Start Test Round Handlers
   const handleStartRound = (config: RoundConfig) => {
@@ -114,8 +116,8 @@ export const App: React.FC = () => {
 
   // Sync Action
   const handleManualSync = async () => {
-    if (!authState.isAuthenticated) {
-      handleGoogleLogin();
+    if (authState.authType !== 'google' || !authState.accessToken) {
+      setIsUserLoginModalOpen(true);
       return;
     }
     const success = await syncNow();
@@ -126,23 +128,19 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    if (!settings.googleClientId) {
-      setIsSettingsOpen(true);
-      addToast('info', '請先輸入 Google Client ID', '請在設定中填入您的 OAuth 用戶端 ID');
-      return;
-    }
-    try {
-      await login(settings.googleClientId);
-      addToast('success', 'Google 登入成功', '正在同步雲端資料...');
-    } catch (err: any) {
-      addToast('error', '登入失敗', err.message);
-    }
+  const handleLocalLogin = (name: string, avatar: string) => {
+    loginLocal(name, avatar);
+    addToast('success', `歡迎，${name}！`, '已切換為本地使用者模式');
   };
 
-  const handleGoogleLogout = () => {
-    logout();
-    addToast('info', '已登出 Google', '切換為本機離線模式');
+  const handleGoogleLogin = async (clientId: string) => {
+    try {
+      await loginGoogle(clientId);
+      addToast('success', 'Google 雲端同步已連線', '已載入最新雲端單字庫');
+    } catch (err: any) {
+      addToast('error', 'Google 登入失敗', err.message);
+      throw err;
+    }
   };
 
   return (
@@ -165,8 +163,7 @@ export const App: React.FC = () => {
         syncStatus={syncStatus}
         authState={authState}
         onSyncClick={handleManualSync}
-        onLoginClick={handleGoogleLogin}
-        onLogoutClick={handleGoogleLogout}
+        onUserClick={() => setIsUserLoginModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         dueWordCount={stats.dueCount}
       />
@@ -259,9 +256,20 @@ export const App: React.FC = () => {
 
       {/* Footer */}
       <footer className="py-6 border-t border-slate-800/60 text-center text-xs text-slate-500 flex flex-col items-center gap-1.5">
-        <div>SpeedVocab · 拼寫反應時間英文單字記憶 Web App · Serverless & Google Drive 同步</div>
-        <div className="text-slate-600 text-[11px]">支援離線 PWA、Canvas 手寫與 Web Speech API 語音拼讀</div>
+        <div>SpeedVocab · 拼寫反應時間英文單字記憶 Web App · Serverless & 本地/雲端同步</div>
+        <div className="text-slate-600 text-[11px]">支援一般使用者免設定本機使用、離線 PWA、Canvas 手寫與 Web Speech API 語音拼讀</div>
       </footer>
+
+      {/* User Login & Profile Modal */}
+      <UserLoginModal
+        isOpen={isUserLoginModalOpen}
+        onClose={() => setIsUserLoginModalOpen(false)}
+        authState={authState}
+        googleClientId={settings.googleClientId || ''}
+        onLoginLocal={handleLocalLogin}
+        onLoginGoogle={handleGoogleLogin}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
 
       {/* Modals */}
       <TestSetupModal

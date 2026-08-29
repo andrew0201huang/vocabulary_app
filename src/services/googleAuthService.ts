@@ -1,18 +1,28 @@
-import { GoogleAuthState, GoogleUser } from '../types/auth';
+import { AuthState, UserProfile } from '../types/auth';
 
-const STORAGE_AUTH_KEY = 'speedvocab_auth_state';
+const STORAGE_AUTH_KEY = 'speedvocab_auth_state_v2';
+const STORAGE_LOCAL_PROFILES = 'speedvocab_local_profiles';
 const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
-export class GoogleAuthService {
+const DEFAULT_LOCAL_USER: UserProfile = {
+  id: 'user_default',
+  name: '一般學習者',
+  avatar: '⚡',
+  authType: 'local',
+  createdAt: new Date().toISOString(),
+};
+
+export class AuthService {
   private tokenClient: any = null;
-  private authState: GoogleAuthState = {
-    isAuthenticated: false,
+  private authState: AuthState = {
+    isAuthenticated: true,
+    user: DEFAULT_LOCAL_USER,
+    authType: 'local',
     accessToken: null,
     expiresAt: null,
-    user: null,
     driveFileId: null,
   };
-  private listeners: ((state: GoogleAuthState) => void)[] = [];
+  private listeners: ((state: AuthState) => void)[] = [];
 
   constructor() {
     this.loadPersistedAuth();
@@ -22,21 +32,53 @@ export class GoogleAuthService {
     try {
       const stored = localStorage.getItem(STORAGE_AUTH_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as GoogleAuthState;
-        // Check if token is still valid (with 5 min safety buffer)
-        if (parsed.expiresAt && parsed.expiresAt > Date.now() + 300000 && parsed.accessToken) {
-          this.authState = parsed;
+        const parsed = JSON.parse(stored) as AuthState;
+        if (parsed.authType === 'google') {
+          // Check if Google token is still valid (5 min buffer)
+          if (parsed.expiresAt && parsed.expiresAt > Date.now() + 300000 && parsed.accessToken) {
+            this.authState = parsed;
+          } else {
+            // Token expired, fallback to local profile with user's name
+            this.authState = {
+              isAuthenticated: true,
+              user: parsed.user || DEFAULT_LOCAL_USER,
+              authType: 'local',
+              accessToken: null,
+              expiresAt: null,
+              driveFileId: parsed.driveFileId,
+            };
+          }
         } else {
-          // Token expired, clear token but can keep cached user info
+          // Local user profile
           this.authState = {
-            ...parsed,
-            isAuthenticated: false,
+            isAuthenticated: true,
+            user: parsed.user || DEFAULT_LOCAL_USER,
+            authType: 'local',
             accessToken: null,
+            expiresAt: null,
+            driveFileId: null,
           };
         }
+      } else {
+        this.authState = {
+          isAuthenticated: true,
+          user: DEFAULT_LOCAL_USER,
+          authType: 'local',
+          accessToken: null,
+          expiresAt: null,
+          driveFileId: null,
+        };
+        this.saveAuth();
       }
     } catch {
-      // ignore
+      this.authState = {
+        isAuthenticated: true,
+        user: DEFAULT_LOCAL_USER,
+        authType: 'local',
+        accessToken: null,
+        expiresAt: null,
+        driveFileId: null,
+      };
     }
   }
 
@@ -49,11 +91,11 @@ export class GoogleAuthService {
     this.notify();
   }
 
-  public getAuthState(): GoogleAuthState {
+  public getAuthState(): AuthState {
     return { ...this.authState };
   }
 
-  public subscribe(cb: (state: GoogleAuthState) => void): () => void {
+  public subscribe(cb: (state: AuthState) => void): () => void {
     this.listeners.push(cb);
     cb(this.getAuthState());
     return () => {
@@ -72,9 +114,59 @@ export class GoogleAuthService {
   }
 
   /**
+   * Set or update local user profile
+   */
+  public setLocalUser(name: string, avatar: string = '⚡'): UserProfile {
+    const user: UserProfile = {
+      id: this.authState.user?.id || ('user_' + Date.now().toString(36)),
+      name: name.trim() || '一般學習者',
+      avatar,
+      authType: 'local',
+      createdAt: this.authState.user?.createdAt || new Date().toISOString(),
+    };
+
+    this.authState = {
+      isAuthenticated: true,
+      user,
+      authType: 'local',
+      accessToken: null,
+      expiresAt: null,
+      driveFileId: null,
+    };
+
+    this.saveAuth();
+    return user;
+  }
+
+  /**
+   * Get list of saved local user profiles
+   */
+  public getLocalProfiles(): UserProfile[] {
+    try {
+      const stored = localStorage.getItem(STORAGE_LOCAL_PROFILES);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // ignore
+    }
+    return [DEFAULT_LOCAL_USER];
+  }
+
+  public saveLocalProfile(profile: UserProfile) {
+    try {
+      const existing = this.getLocalProfiles();
+      const updated = [profile, ...existing.filter(p => p.id !== profile.id)];
+      localStorage.setItem(STORAGE_LOCAL_PROFILES, JSON.stringify(updated.slice(0, 10)));
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
    * Initialize Google Token Client with GIS
    */
-  public initTokenClient(clientId: string, onTokenReceived?: (token: string) => void): boolean {
+  public initGoogleTokenClient(clientId: string, onTokenReceived?: (token: string) => void): boolean {
     if (typeof window === 'undefined' || !(window as any).google?.accounts?.oauth2) {
       return false;
     }
@@ -93,19 +185,42 @@ export class GoogleAuthService {
             const expiresIn = Number(response.expires_in) || 3599;
             const expiresAt = Date.now() + expiresIn * 1000;
 
-            this.authState.accessToken = response.access_token;
-            this.authState.expiresAt = expiresAt;
-            this.authState.isAuthenticated = true;
+            let googleProfile: UserProfile = {
+              id: 'google_user_' + Date.now().toString(36),
+              name: 'Google 學習者',
+              avatar: '🌐',
+              authType: 'google',
+              createdAt: new Date().toISOString(),
+            };
 
-            // Fetch user info
+            // Fetch Google User Profile
             try {
-              const user = await this.fetchUserProfile(response.access_token);
-              if (user) {
-                this.authState.user = user;
+              const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${response.access_token}` },
+              });
+              if (res.ok) {
+                const data = await res.json();
+                googleProfile = {
+                  id: data.sub || googleProfile.id,
+                  name: data.name || data.email?.split('@')[0] || 'Google User',
+                  email: data.email,
+                  avatar: data.picture || '🌐',
+                  authType: 'google',
+                  createdAt: new Date().toISOString(),
+                };
               }
             } catch (err) {
-              console.warn('Failed to fetch user profile:', err);
+              console.warn('Failed to fetch google user info:', err);
             }
+
+            this.authState = {
+              isAuthenticated: true,
+              user: googleProfile,
+              authType: 'google',
+              accessToken: response.access_token,
+              expiresAt,
+              driveFileId: this.authState.driveFileId,
+            };
 
             this.saveAuth();
             onTokenReceived?.(response.access_token);
@@ -122,28 +237,22 @@ export class GoogleAuthService {
   /**
    * Request Google Login
    */
-  public requestLogin(clientId?: string): Promise<string> {
+  public requestGoogleLogin(clientId: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      if (!clientId && !this.tokenClient) {
-        reject(new Error('請先在設定中輸入 Google Client ID'));
+      if (!clientId) {
+        reject(new Error('未設定 Google Client ID，請先在設定中填寫或使用一般使用者模式。'));
         return;
       }
 
-      if (clientId && !this.tokenClient) {
-        const initialized = this.initTokenClient(clientId, (token) => resolve(token));
+      if (!this.tokenClient) {
+        const initialized = this.initGoogleTokenClient(clientId, (token) => resolve(token));
         if (!initialized) {
-          reject(new Error('Google 認證元件尚未載入，請稍後重試或檢查網路連線。'));
+          reject(new Error('Google 登入元件尚未載入完成，請確認網路連線或使用一般使用者模式。'));
           return;
         }
       }
 
-      if (!this.tokenClient) {
-        reject(new Error('尚未初始化 Google 登入元件'));
-        return;
-      }
-
       try {
-        // Prompt user for consent/account selection
         this.tokenClient.requestAccessToken({ prompt: '' });
       } catch (err) {
         reject(err);
@@ -152,30 +261,7 @@ export class GoogleAuthService {
   }
 
   /**
-   * Fetch User Profile from Google userinfo API
-   */
-  public async fetchUserProfile(accessToken: string): Promise<GoogleUser | null> {
-    try {
-      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return {
-        id: data.sub,
-        name: data.name || data.email?.split('@')[0] || 'Google User',
-        email: data.email,
-        picture: data.picture,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Sign out and clear cached auth
+   * Logout / Switch to standard local user
    */
   public logout() {
     if (this.authState.accessToken && (window as any).google?.accounts?.oauth2?.revoke) {
@@ -187,14 +273,23 @@ export class GoogleAuthService {
     }
 
     this.authState = {
-      isAuthenticated: false,
+      isAuthenticated: true,
+      user: {
+        id: 'user_default',
+        name: '一般學習者',
+        avatar: '⚡',
+        authType: 'local',
+        createdAt: new Date().toISOString(),
+      },
+      authType: 'local',
       accessToken: null,
       expiresAt: null,
-      user: null,
       driveFileId: null,
     };
     this.saveAuth();
   }
 }
 
-export const googleAuthService = new GoogleAuthService();
+export const authService = new AuthService();
+// Export legacy alias for compatibility
+export const googleAuthService = authService;
