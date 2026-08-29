@@ -1,8 +1,11 @@
 import { AppSettings } from '../types/vocabulary';
 
+// Read default Client ID from build-time environment variable (e.g. VITE_GOOGLE_CLIENT_ID)
+const ENV_CLIENT_ID = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) || '';
+
 export const DEFAULT_SETTINGS: AppSettings = {
-  // Can be filled by user or default client ID
-  googleClientId: '',
+  // App-level default Google Client ID
+  googleClientId: ENV_CLIENT_ID,
   speechRate: 0.95,
   speechPitch: 1.0,
   speechVoiceName: '',

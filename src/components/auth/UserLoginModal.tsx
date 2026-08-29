@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Cloud, Check, ShieldCheck, Sparkles, AlertCircle, Key, LogIn } from 'lucide-react';
+import { User, Cloud, Check, ShieldCheck, Sparkles, AlertCircle, LogIn, ExternalLink } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { AuthState } from '../../types/auth';
 
@@ -24,11 +24,14 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
   onLoginGoogle,
   onOpenSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'local' | 'google'>('local');
+  const [activeTab, setActiveTab] = useState<'local' | 'google'>(
+    googleClientId && authState.authType === 'google' ? 'google' : 'local'
+  );
   const [userName, setUserName] = useState(authState.user?.name || '一般學習者');
   const [selectedAvatar, setSelectedAvatar] = useState(authState.user?.avatar || '⚡');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [manualClientId, setManualClientId] = useState(googleClientId || '');
 
   const handleSaveLocalUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,18 +40,18 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
   };
 
   const handleGoogleSignIn = async () => {
-    if (!googleClientId) {
-      onClose();
-      onOpenSettings();
+    const targetClientId = googleClientId || manualClientId.trim();
+    if (!targetClientId) {
+      setErrorMessage('請先填入 App 的 Google Client ID');
       return;
     }
     setIsGoogleLoading(true);
     setErrorMessage(null);
     try {
-      await onLoginGoogle(googleClientId);
+      await onLoginGoogle(targetClientId);
       onClose();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Google 登入失敗');
+      setErrorMessage(err.message || 'Google 登入失敗，請確認 Client ID 與授權來源設定是否正確');
     } finally {
       setIsGoogleLoading(false);
     }
@@ -61,7 +64,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <User className="w-5 h-5 text-indigo-400" />
-          <span>使用者登入與雲端設定</span>
+          <span>使用者登入與帳號設定</span>
         </div>
       }
       maxWidth="md"
@@ -92,7 +95,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
             }`}
           >
             <Cloud className="w-4 h-4" />
-            <span>Google 雲端同步 (進階)</span>
+            <span>Google 帳號登入</span>
           </button>
         </div>
 
@@ -102,9 +105,9 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
             <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-xs text-slate-300 flex items-start gap-2.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-emerald-300">免設定、即開即用：</span>
-                <p className="mt-0.5 text-slate-300 text-[11px]">
-                  學習進度與反應時間會自動儲存於您的瀏覽器快取中，支援離線使用與 JSON/CSV 資料備份！
+                <span className="font-bold text-emerald-300">免任何設定、即開即用：</span>
+                <p className="mt-0.5 text-slate-300 text-[11px] leading-relaxed">
+                  所有單字進度與反應時間均自動保存在您的瀏覽器中，支援完全離線使用、PWA 桌面安裝與 JSON/CSV 資料備份匯出！
                 </p>
               </div>
             </div>
@@ -159,7 +162,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 className="py-2.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-950/40"
               >
                 <Check className="w-4 h-4" />
-                <span>以一般使用者開始</span>
+                <span>儲存並開始學習</span>
               </button>
             </div>
           </form>
@@ -171,10 +174,10 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
             <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-slate-300 flex flex-col gap-1.5">
               <div className="font-bold text-indigo-300 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4" />
-                <span>Google Drive 雲端同步說明：</span>
+                <span>Google 雲端同步原理：</span>
               </div>
               <p className="text-[11px] text-slate-300 leading-relaxed">
-                將單字庫即時同步到您個人 Google Drive 的 <code>appDataFolder</code> 隱藏目錄，可在多台裝置（手機、電腦、平板）間無縫同步。
+                使用者只要登入自己的 Google 帳號，進度即會自動同步至您個人的 Google Drive 隱藏資料夾（<code>appDataFolder</code>），不需額外伺服器。
               </p>
             </div>
 
@@ -205,29 +208,55 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading}
-                  className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/40 transition-all active:scale-[0.98]"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>{isGoogleLoading ? '登入授權中...' : '使用 Google 帳號登入同步'}</span>
-                </button>
+                {/* If Client ID is pre-configured in .env or settings */}
+                {googleClientId ? (
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading}
+                    className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/40 transition-all active:scale-[0.98]"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{isGoogleLoading ? '正在開啟 Google 登入視窗...' : '點擊以 Google 帳號登入'}</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">
+                        網站 Google Client ID：
+                      </label>
+                      <input
+                        type="text"
+                        value={manualClientId}
+                        onChange={(e) => setManualClientId(e.target.value)}
+                        placeholder="例如：xxxx.apps.googleusercontent.com"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
 
-                {!googleClientId && (
-                  <div className="text-center">
                     <button
                       type="button"
-                      onClick={() => {
-                        onClose();
-                        onOpenSettings();
-                      }}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center justify-center gap-1 mx-auto"
+                      onClick={handleGoogleSignIn}
+                      disabled={isGoogleLoading || !manualClientId.trim()}
+                      className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-950/40"
                     >
-                      <Key className="w-3.5 h-3.5" />
-                      <span>尚未填入 Google Client ID？前往設定頁面設定</span>
+                      <LogIn className="w-4 h-4" />
+                      <span>{isGoogleLoading ? '登入中...' : '使用此 Client ID 進行 Google 登入'}</span>
                     </button>
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenSettings();
+                        }}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center justify-center gap-1 mx-auto"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>查看如何取得網站的 Google Client ID</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
