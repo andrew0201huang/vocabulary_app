@@ -257,7 +257,18 @@ export const App: React.FC = () => {
       {/* Footer */}
       <footer className="py-6 border-t border-slate-800/60 text-center text-xs text-slate-500 flex flex-col items-center gap-1.5">
         <div>SpeedVocab · 拼寫反應時間英文單字記憶 Web App · Serverless & 本地/雲端同步</div>
-        <div className="text-slate-600 text-[11px]">支援一般使用者免設定本機使用、離線 PWA、Canvas 手寫與 Web Speech API 語音拼讀</div>
+        <div className="text-slate-600 text-[11px] flex items-center gap-2">
+          <span>支援一般使用者免設定本機使用、離線 PWA、Canvas 手寫與 Web Speech API 語音拼讀</span>
+          <span>·</span>
+          <a
+            href="./privacy.html"
+            target="_blank"
+            rel="noreferrer"
+            className="text-slate-400 hover:text-indigo-300 underline transition-colors"
+          >
+            隱私權政策 (Privacy Policy)
+          </a>
+        </div>
       </footer>
 
       {/* User Login & Profile Modal */}
