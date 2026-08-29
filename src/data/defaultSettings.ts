@@ -7,6 +7,8 @@ const ENV_CLIENT_ID = (typeof import.meta !== 'undefined' && import.meta.env?.VI
 export const DEFAULT_SETTINGS: AppSettings = {
   googleClientId: ENV_CLIENT_ID,
   openaiApiKey: '',
+  googleSpeechApiKey: '',
+  voiceSpeechEngine: 'browser',
   speechRate: 0.95,
   speechPitch: 1.0,
   speechVoiceName: '',

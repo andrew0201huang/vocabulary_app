@@ -616,7 +616,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
         )}
 
         {currentInputMode === 'voice' && (
-          settings.openaiApiKey ? (
+          settings.voiceSpeechEngine !== 'browser' ? (
             <WhisperVoiceInput
               targetWord={currentWord.word}
               settings={settings}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, ShieldCheck, Volume2, Gauge, ShieldAlert, Check, Play, Headphones, ChevronDown, ChevronUp } from 'lucide-react';
 import { Modal } from '../common/Modal';
-import { AppSettings } from '../../types/vocabulary';
+import { AppSettings, VoiceSpeechEngine } from '../../types/vocabulary';
 import { useSpeech } from '../../hooks/useSpeech';
 
 interface SettingsModalProps {
@@ -21,6 +21,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [googleClientId, setGoogleClientId] = useState(settings.googleClientId || '');
   const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey || '');
+  const [googleSpeechApiKey, setGoogleSpeechApiKey] = useState(settings.googleSpeechApiKey || '');
+  const [voiceSpeechEngine, setVoiceSpeechEngine] = useState<VoiceSpeechEngine>(settings.voiceSpeechEngine || 'browser');
   const [speechRate, setSpeechRate] = useState(settings.speechRate || 0.95);
   const [speechPitch, setSpeechPitch] = useState(settings.speechPitch || 1.0);
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(settings.soundEffectsEnabled ?? true);
@@ -36,7 +38,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   );
 
   const [showAdvancedAuth, setShowAdvancedAuth] = useState(false);
-  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   const { speak } = useSpeech();
@@ -49,6 +50,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSaveSettings({
       googleClientId: googleClientId.trim(),
       openaiApiKey: openaiApiKey.trim(),
+      googleSpeechApiKey: googleSpeechApiKey.trim(),
+      voiceSpeechEngine,
       speechRate: Number(speechRate),
       speechPitch: Number(speechPitch),
       soundEffectsEnabled,
@@ -252,37 +255,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Section 4: OpenAI Whisper — Offline Recording Mode */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎙️</span>
-              <span className="text-xs font-bold text-slate-200">語音拼讀模式：OpenAI Whisper API</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                openaiApiKey
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-              }`}>
-                {openaiApiKey ? '✅ 離線錄音模式' : '⚠️ 使用瀏覽器語音辨識'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowOpenAIKey(!showOpenAIKey)}
-              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-            >
-              {showOpenAIKey ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
+        {/* Section 4: Voice Speech Engine — Offline Recording Mode */}
+        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎙️</span>
+            <span className="text-xs font-bold text-slate-200">語音拼讀引擎設定</span>
           </div>
 
+          {/* Engine selector */}
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: 'browser', label: '🌐 瀏覽器', sub: '即時串流\n(預設)' },
+              { value: 'google',  label: '🔵 Google', sub: '離線錄音\nSpeech API' },
+              { value: 'openai',  label: '🟣 OpenAI', sub: '離線錄音\nWhisper-1' },
+            ] as { value: VoiceSpeechEngine; label: string; sub: string }[]).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setVoiceSpeechEngine(opt.value)}
+                className={`py-2.5 px-2 rounded-xl border text-center transition-all ${
+                  voiceSpeechEngine === opt.value
+                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-200 shadow-md'
+                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500'
+                }`}
+              >
+                <div className="text-xs font-bold">{opt.label}</div>
+                {opt.sub.split('\n').map((l, i) => (
+                  <div key={i} className="text-[10px] text-slate-500 leading-tight">{l}</div>
+                ))}
+              </button>
+            ))}
+          </div>
+
+          {/* Description per engine */}
           <div className="text-[11px] text-slate-400 leading-relaxed">
-            {openaiApiKey
-              ? '🎉 已啟用：語音拼讀將改用本機錄音後送至 Whisper AI 辨識，辨識精準度高且不受網路狀態影響。'
-              : '目前使用 Chrome 瀏覽器內建語音辨識（需連線至 Google 語音伺服器）。設定 OpenAI API 金鑰後可改為本機錄音模式。'}
+            {voiceSpeechEngine === 'browser' && '使用 Chrome / Edge 瀏覽器內建語音辨識，即時串流至 Google 語音伺服器。網路不穩定時可能出現 network 錯誤。'}
+            {voiceSpeechEngine === 'google'  && '🎉 先在本機完整錄音，錄完後一次上傳至 Google Cloud Speech-to-Text 辨識，不受錄音中網路狀態影響，辨識精準。'}
+            {voiceSpeechEngine === 'openai'  && '🎉 先在本機完整錄音，錄完後一次上傳至 OpenAI Whisper-1 辨識，精確度高、支援字母拼讀與整字辨識。'}
           </div>
 
-          {showOpenAIKey && (
-            <div className="mt-1 flex flex-col gap-2 animate-fade-in">
+          {/* Google Speech API Key (shown when google selected) */}
+          {voiceSpeechEngine === 'google' && (
+            <div className="flex flex-col gap-2 pt-1 border-t border-slate-800">
+              <label className="text-[11px] font-bold text-slate-300">
+                Google Cloud Speech-to-Text API Key：
+              </label>
+              <input
+                type="password"
+                value={googleSpeechApiKey}
+                onChange={(e) => setGoogleSpeechApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
+              />
+              <div className="text-[10px] text-slate-500 leading-relaxed">
+                前往 <a href="https://console.cloud.google.com/apis/library/speech.googleapis.com" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Google Cloud Console</a> 啟用 <strong>Cloud Speech-to-Text API</strong>，<br />
+                再至「憑證」建立「API 金鑰」並限制為 Speech-to-Text API。<br />
+                金鑰僅存在瀏覽器本機（localStorage）。
+              </div>
+            </div>
+          )}
+
+          {/* OpenAI Whisper API Key (shown when openai selected) */}
+          {voiceSpeechEngine === 'openai' && (
+            <div className="flex flex-col gap-2 pt-1 border-t border-slate-800">
               <label className="text-[11px] font-bold text-slate-300">
                 OpenAI API Key (sk-...)：
               </label>
@@ -294,8 +329,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
               />
               <div className="text-[10px] text-slate-500 leading-relaxed">
-                金鑰僅儲存在您的瀏覽器本機（localStorage），不會傳送至任何第三方伺服器。<br />
-                取得金鑰：前往 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-indigo-400 underline">platform.openai.com/api-keys</a> 建立 API Key。
+                前往 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-indigo-400 underline">platform.openai.com/api-keys</a> 建立 API Key。<br />
+                金鑰僅存在瀏覽器本機（localStorage）。
               </div>
             </div>
           )}

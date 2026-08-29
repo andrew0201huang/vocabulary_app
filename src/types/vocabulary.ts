@@ -71,25 +71,29 @@ export interface RoundSummary {
   masteredWordIds: string[];    // Words that achieved fast/mastered in this round
 }
 
+export type VoiceSpeechEngine = 'browser' | 'google' | 'openai';
+
 export interface AppSettings {
   googleClientId: string;
-  openaiApiKey: string;          // Optional OpenAI API key for Whisper offline recording mode
-  speechRate: number;          // 0.5 to 1.5 (default: 0.95)
-  speechPitch: number;         // 0.5 to 1.5 (default: 1.0)
-  speechVoiceName: string;     // Preferred TTS voice
+  openaiApiKey: string;            // OpenAI Whisper API key
+  googleSpeechApiKey: string;      // Google Cloud Speech-to-Text API key
+  voiceSpeechEngine: VoiceSpeechEngine; // Which offline engine to use ('browser' = legacy)
+  speechRate: number;              // 0.5 to 1.5 (default: 0.95)
+  speechPitch: number;             // 0.5 to 1.5 (default: 1.0)
+  speechVoiceName: string;         // Preferred TTS voice
   soundEffectsEnabled: boolean;
   
-  // Speed Thresholds (in seconds)
+  // Speed Thresholds (in ms)
   speedThresholds: {
-    lightningMs: number;       // e.g. 5000ms (Fast / 精通)
-    goodMs: number;            // e.g. 10000ms (Good / 熟練)
-    slowMs: number;            // e.g. 15000ms (Slow / 生疏)
+    lightningMs: number;           // e.g. 5000ms (Fast / 精通)
+    goodMs: number;                // e.g. 10000ms (Good / 熟練)
+    slowMs: number;                // e.g. 15000ms (Slow / 生疏)
   };
   
   defaultRoundWordCount: number;
   defaultInputMode: InputMode;
   autoPlayPronunciation: boolean;
-  chineseDelaySeconds: number; // Default listening delay (tied to slowMs)
+  chineseDelaySeconds: number;     // Default listening delay (tied to slowMs)
   darkMode: boolean;
 }
 
