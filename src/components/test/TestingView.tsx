@@ -618,6 +618,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
           <VoiceInput
             targetWord={currentWord.word}
             onSubmit={handleVoiceSubmit}
+            onSwitchToKeyboard={() => setCurrentInputMode('keyboard')}
             disabled={feedback?.show}
           />
         )}

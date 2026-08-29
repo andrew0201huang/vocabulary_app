@@ -5,12 +5,14 @@ import { useSpeech } from '../../hooks/useSpeech';
 interface VoiceInputProps {
   targetWord: string;
   onSubmit: (spelled: string) => void;
+  onSwitchToKeyboard?: () => void;
   disabled?: boolean;
 }
 
 export const VoiceInput: React.FC<VoiceInputProps> = ({
   targetWord,
   onSubmit,
+  onSwitchToKeyboard,
   disabled = false,
 }) => {
   const [spelledBuffer, setSpelledBuffer] = useState<string>('');
@@ -78,19 +80,30 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       )}
 
       {errorMessage && (
-        <div className="w-full max-w-md p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-            <span>{errorMessage}</span>
+        <div className="w-full max-w-md p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex flex-col gap-2.5">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+            <span className="leading-relaxed">{errorMessage}</span>
           </div>
-          <button
-            type="button"
-            onClick={handleToggleListening}
-            className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600 text-rose-200 text-xs font-bold shrink-0 flex items-center gap-1 transition-colors"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>重試</span>
-          </button>
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-rose-500/20">
+            {onSwitchToKeyboard && (
+              <button
+                type="button"
+                onClick={onSwitchToKeyboard}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+              >
+                切換為鍵盤打字
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleToggleListening}
+              className="px-2.5 py-1 rounded-lg bg-rose-600/40 hover:bg-rose-600 text-rose-100 text-xs font-bold flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>重試語音</span>
+            </button>
+          </div>
         </div>
       )}
 

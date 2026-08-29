@@ -3,6 +3,8 @@ export class SpeechService {
   private isVoiceLoaded = false;
   private recognition: any = null;
   private isListening = false;
+  private networkRetryCount = 0;
+  private maxNetworkRetries = 2;
 
   constructor() {
     this.initVoices();
@@ -104,67 +106,91 @@ export class SpeechService {
       return false;
     }
 
-    // Stop any existing instance
     this.stopVoiceSpelling();
+    this.isListening = true;
+    this.networkRetryCount = 0;
 
-    try {
-      this.recognition = new SpeechRecognitionClass();
-      this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
-      this.recognition.maxAlternatives = 3;
+    const runRecognitionSession = () => {
+      if (!this.isListening) return;
 
-      let accumulated = '';
+      try {
+        const recognition = new SpeechRecognitionClass();
+        // Use non-continuous chunks to prevent Chrome WebSocket network stream timeout
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 3;
 
-      this.recognition.onstart = () => {
-        this.isListening = true;
-      };
+        let sessionAccumulated = '';
 
-      this.recognition.onresult = (event: any) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0]?.transcript?.toLowerCase() || '';
-          if (event.results[i].isFinal) {
-            const parsed = this.parseLettersFromTranscript(transcript);
-            accumulated += parsed;
-            onSpelledUpdate(accumulated, true);
-          } else {
-            interim += transcript;
+        recognition.onresult = (event: any) => {
+          this.networkRetryCount = 0; // Reset on successful result
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0]?.transcript?.toLowerCase() || '';
+            if (event.results[i].isFinal) {
+              const parsed = this.parseLettersFromTranscript(transcript);
+              sessionAccumulated += parsed;
+              onSpelledUpdate(sessionAccumulated, true);
+            } else {
+              interim += transcript;
+            }
           }
+
+          if (interim) {
+            const interimParsed = this.parseLettersFromTranscript(interim);
+            onSpelledUpdate(sessionAccumulated + interimParsed, false);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn('Speech Recognition event error:', event.error);
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            this.isListening = false;
+            onError?.('請允許瀏覽器麥克風權限以進行語音拼讀。');
+          } else if (event.error === 'network') {
+            if (this.networkRetryCount < this.maxNetworkRetries && this.isListening) {
+              this.networkRetryCount++;
+              setTimeout(() => {
+                if (this.isListening) runRecognitionSession();
+              }, 600);
+            } else {
+              this.isListening = false;
+              onError?.('無法連線至 Google 語音辨識伺服器 (Network Error)。建議檢查網路或改用鍵盤輸入。');
+            }
+          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            onError?.(`語音辨識提示：${event.error}`);
+          }
+        };
+
+        recognition.onend = () => {
+          // If still listening, seamlessly restart next speech chunk
+          if (this.isListening) {
+            setTimeout(() => {
+              if (this.isListening) {
+                runRecognitionSession();
+              }
+            }, 100);
+          }
+        };
+
+        this.recognition = recognition;
+        recognition.start();
+      } catch (err: any) {
+        console.error('Failed to start recognition instance:', err);
+        if (this.isListening) {
+          onError?.(err.message || '語音辨識啟動失敗');
+          this.isListening = false;
         }
+      }
+    };
 
-        if (interim) {
-          const interimParsed = this.parseLettersFromTranscript(interim);
-          onSpelledUpdate(accumulated + interimParsed, false);
-        }
-      };
-
-      this.recognition.onerror = (event: any) => {
-        console.warn('Speech Recognition error event:', event.error);
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          onError?.('請允許瀏覽器麥克風權限以進行語音拼讀。');
-        } else if (event.error === 'network') {
-          onError?.('連線至語音伺服器逾時 (Network Error)。請確認網路連線正常，或點擊下方重新連線。');
-        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          onError?.(`語音辨識提示：${event.error}`);
-        }
-      };
-
-      this.recognition.onend = () => {
-        this.isListening = false;
-      };
-
-      this.recognition.start();
-      return true;
-    } catch (err: any) {
-      console.error('Failed to start speech recognition:', err);
-      onError?.(err.message || '無法啟動語音辨識');
-      this.isListening = false;
-      return false;
-    }
+    runRecognitionSession();
+    return true;
   }
 
   public stopVoiceSpelling() {
+    this.isListening = false;
     if (this.recognition) {
       try {
         this.recognition.onend = null;
@@ -175,7 +201,6 @@ export class SpeechService {
         // ignore
       }
       this.recognition = null;
-      this.isListening = false;
     }
   }
 
