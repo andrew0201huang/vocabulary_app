@@ -73,6 +73,7 @@ export interface RoundSummary {
 
 export interface AppSettings {
   googleClientId: string;
+  openaiApiKey: string;          // Optional OpenAI API key for Whisper offline recording mode
   speechRate: number;          // 0.5 to 1.5 (default: 0.95)
   speechPitch: number;         // 0.5 to 1.5 (default: 1.0)
   speechVoiceName: string;     // Preferred TTS voice
@@ -80,15 +81,15 @@ export interface AppSettings {
   
   // Speed Thresholds (in seconds)
   speedThresholds: {
-    lightningMs: number;       // e.g. 1800ms (Fast / 精通)
-    goodMs: number;            // e.g. 3500ms (Good / 熟練)
-    slowMs: number;            // e.g. 6000ms (Slow / 生疏)
+    lightningMs: number;       // e.g. 5000ms (Fast / 精通)
+    goodMs: number;            // e.g. 10000ms (Good / 熟練)
+    slowMs: number;            // e.g. 15000ms (Slow / 生疏)
   };
   
   defaultRoundWordCount: number;
   defaultInputMode: InputMode;
   autoPlayPronunciation: boolean;
-  chineseDelaySeconds: number; // Default 10s listening delay
+  chineseDelaySeconds: number; // Default listening delay (tied to slowMs)
   darkMode: boolean;
 }
 

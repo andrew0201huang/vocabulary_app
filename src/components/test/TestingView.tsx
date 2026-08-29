@@ -8,6 +8,7 @@ import { SpeedGauge } from './SpeedGauge';
 import { KeyboardInput } from './KeyboardInput';
 import { HandwritingInput } from './HandwritingInput';
 import { VoiceInput } from './VoiceInput';
+import { WhisperVoiceInput } from './WhisperVoiceInput';
 import { normalizeWord } from '../../utils/textUtils';
 
 interface TestingViewProps {
@@ -615,12 +616,23 @@ export const TestingView: React.FC<TestingViewProps> = ({
         )}
 
         {currentInputMode === 'voice' && (
-          <VoiceInput
-            targetWord={currentWord.word}
-            onSubmit={handleVoiceSubmit}
-            onSwitchToKeyboard={() => setCurrentInputMode('keyboard')}
-            disabled={feedback?.show}
-          />
+          settings.openaiApiKey ? (
+            <WhisperVoiceInput
+              targetWord={currentWord.word}
+              settings={settings}
+              onSubmit={handleVoiceSubmit}
+              onSwitchToKeyboard={() => setCurrentInputMode('keyboard')}
+              disabled={feedback?.show}
+            />
+          ) : (
+            <VoiceInput
+              targetWord={currentWord.word}
+              onSubmit={handleVoiceSubmit}
+              onSwitchToKeyboard={() => setCurrentInputMode('keyboard')}
+              disabled={feedback?.show}
+              autoStart={true}
+            />
+          )
         )}
       </div>
 
