@@ -11,13 +11,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   speechVoiceName: '',
   soundEffectsEnabled: true,
   speedThresholds: {
-    lightningMs: 1800, // < 1.8s is Mastered / Lightning
-    goodMs: 3500,      // < 3.5s is Good / Familiar
-    slowMs: 6000,      // > 6.0s is Struggling
+    lightningMs: 5000,  // < 5.0s (極速精通)
+    goodMs: 10000,      // < 10.0s (熟練反應)
+    slowMs: 15000,      // > 10.0s ~ 15.0s (生疏重測)
   },
   defaultRoundWordCount: 10,
   defaultInputMode: 'keyboard',
   autoPlayPronunciation: true,
-  chineseDelaySeconds: 10,
+  chineseDelaySeconds: 10, // 預設以生疏重測時間作為聽音延遲
   darkMode: true,
 };

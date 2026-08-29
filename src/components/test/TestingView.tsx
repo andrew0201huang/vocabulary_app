@@ -450,7 +450,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
         {/* Visual Prompt: Chinese Translation vs. Listening Delay Card */}
         {(() => {
-          const chineseDelaySec = config.chineseDelaySeconds ?? settings.chineseDelaySeconds ?? 10;
+          const chineseDelaySec = config.chineseDelaySeconds ?? Math.round(settings.speedThresholds.slowMs / 1000) ?? 10;
           const delayRemainingSec = Math.max(0, Math.ceil(chineseDelaySec - elapsedMs / 1000));
           const isChineseRevealed = forceShowChinese || delayRemainingSec === 0 || chineseDelaySec === 0;
 
