@@ -10,7 +10,7 @@ export function useSpeech(settings?: AppSettings) {
 
   useEffect(() => {
     setIsSupported(speechService.isSpeechRecognitionSupported());
-    setVoices(speechService.getVoices());
+    setVoices(speechService.getAvailableVoices());
   }, []);
 
   const speak = useCallback(async (word: string, customRate?: number, customPitch?: number) => {
@@ -19,7 +19,7 @@ export function useSpeech(settings?: AppSettings) {
     const rate = customRate ?? settings?.speechRate ?? 0.95;
     const pitch = customPitch ?? settings?.speechPitch ?? 1.0;
     try {
-      await speechService.speakWord(word, rate, pitch);
+      await speechService.speak(word, rate, pitch, settings?.speechVoiceName);
     } finally {
       setIsSpeaking(false);
     }
@@ -28,9 +28,9 @@ export function useSpeech(settings?: AppSettings) {
   const startVoiceSpelling = useCallback((
     onUpdate: (spelled: string, isFinal: boolean) => void,
     onError?: (err: string) => void
-  ) => {
+  ): boolean => {
     setIsListening(true);
-    speechService.startVoiceSpelling(
+    const success = speechService.startVoiceSpelling(
       (spelled, isFinal) => {
         onUpdate(spelled, isFinal);
       },
@@ -39,6 +39,10 @@ export function useSpeech(settings?: AppSettings) {
         onError?.(err);
       }
     );
+    if (!success) {
+      setIsListening(false);
+    }
+    return success;
   }, []);
 
   const stopVoiceSpelling = useCallback(() => {

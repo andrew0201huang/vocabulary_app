@@ -78,6 +78,7 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
                 autoPlayAudio: true,
                 showPhoneticHint: false,
                 handwritingSelfGrade: true,
+                chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
               })}
               className="w-full md:w-56 py-2.5 px-4 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
             >
@@ -98,6 +99,7 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
             autoPlayAudio: true,
             showPhoneticHint: false,
             handwritingSelfGrade: true,
+            chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
           })}
           className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 transition-all cursor-pointer flex flex-col justify-between gap-4 group"
         >
@@ -133,6 +135,7 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
             autoPlayAudio: true,
             showPhoneticHint: false,
             handwritingSelfGrade: true,
+            chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
           })}
           className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-rose-500/50 hover:bg-slate-900 transition-all cursor-pointer flex flex-col justify-between gap-4 group"
         >
@@ -168,6 +171,7 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
             autoPlayAudio: true,
             showPhoneticHint: false,
             handwritingSelfGrade: true,
+            chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
           })}
           className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900 transition-all cursor-pointer flex flex-col justify-between gap-4 group"
         >

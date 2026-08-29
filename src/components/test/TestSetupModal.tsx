@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Keyboard, PenTool, Mic, Sparkles, Filter, Volume2 } from 'lucide-react';
+import { Play, Keyboard, PenTool, Mic, Sparkles, Filter, Volume2, Headphones } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { RoundConfig, InputMode, WordItem } from '../../types/vocabulary';
 import { isWordDueForReview } from '../../services/spacedRepetition';
@@ -25,6 +25,7 @@ export const TestSetupModal: React.FC<TestSetupModalProps> = ({
   const [inputMode, setInputMode] = useState<InputMode>('keyboard');
   const [autoPlayAudio, setAutoPlayAudio] = useState<boolean>(true);
   const [showPhoneticHint, setShowPhoneticHint] = useState<boolean>(false);
+  const [chineseDelaySeconds, setChineseDelaySeconds] = useState<number>(10);
 
   // Calculate word count for each category
   const dueCount = words.filter(isWordDueForReview).length;
@@ -42,6 +43,7 @@ export const TestSetupModal: React.FC<TestSetupModalProps> = ({
       autoPlayAudio,
       showPhoneticHint,
       handwritingSelfGrade: true,
+      chineseDelaySeconds,
     });
     onClose();
   };
@@ -284,6 +286,40 @@ export const TestSetupModal: React.FC<TestSetupModalProps> = ({
               className="w-4 h-4 rounded text-indigo-600 bg-slate-800 border-slate-700 focus:ring-indigo-500"
             />
           </label>
+
+          {/* Listening Delay Selector */}
+          <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Headphones className="w-3.5 h-3.5 text-cyan-400" />
+                <span>聽音優先模式 (先聽發音，延遲顯示中文釋義)</span>
+              </span>
+              <span className="text-xs font-mono text-indigo-300 font-bold">
+                {chineseDelaySeconds === 0 ? '即時顯示' : `${chineseDelaySeconds} 秒`}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { sec: 0, label: '0s (即時)' },
+                { sec: 5, label: '5 秒' },
+                { sec: 10, label: '10 秒 (推薦)' },
+                { sec: 15, label: '15 秒' },
+              ].map(({ sec, label }) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setChineseDelaySeconds(sec)}
+                  className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all ${
+                    chineseDelaySeconds === sec
+                      ? 'border-cyan-500 bg-cyan-950/40 text-cyan-200'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Start Button */}

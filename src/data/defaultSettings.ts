@@ -18,5 +18,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultRoundWordCount: 10,
   defaultInputMode: 'keyboard',
   autoPlayPronunciation: true,
+  chineseDelaySeconds: 10,
   darkMode: true,
 };

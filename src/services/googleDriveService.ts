@@ -18,7 +18,12 @@ export class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Drive API search failed: ${res.statusText}`);
+        const errJson = await res.json().catch(() => null);
+        const detail = errJson?.error?.message || res.statusText;
+        if (res.status === 403) {
+          throw new Error(`Google Drive API 尚未在 Google Cloud Console 中啟用。詳細訊息：${detail}`);
+        }
+        throw new Error(`Drive 搜尋失敗 (${res.status}): ${detail}`);
       }
 
       const data = await res.json();
@@ -48,7 +53,9 @@ export class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Drive API download failed: ${res.statusText}`);
+        const errJson = await res.json().catch(() => null);
+        const detail = errJson?.error?.message || res.statusText;
+        throw new Error(`Drive 下載失敗 (${res.status}): ${detail}`);
       }
 
       const json = await res.json();
@@ -94,7 +101,12 @@ export class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Drive API upload failed: ${res.statusText}`);
+        const errJson = await res.json().catch(() => null);
+        const detail = errJson?.error?.message || res.statusText;
+        if (res.status === 403) {
+          throw new Error(`Google Drive API 尚未啟用或權限受限。詳細訊息：${detail}`);
+        }
+        throw new Error(`Drive 上傳失敗 (${res.status}): ${detail}`);
       }
 
       const result = await res.json();
@@ -121,7 +133,9 @@ export class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Drive API patch update failed: ${res.statusText}`);
+        const errJson = await res.json().catch(() => null);
+        const detail = errJson?.error?.message || res.statusText;
+        throw new Error(`Drive 更新覆蓋失敗 (${res.status}): ${detail}`);
       }
     } catch (err) {
       console.error('updateAppDataFile error:', err);

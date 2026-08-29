@@ -19,6 +19,7 @@ export class StorageService {
   private syncStatus: SyncStatus = 'local_only';
   private syncListeners: ((status: SyncStatus) => void)[] = [];
   private dataListeners: ((data: StorageData) => void)[] = [];
+  private lastSyncError: string | null = null;
 
   constructor() {
     this.loadFromLocalStorage();
@@ -241,13 +242,19 @@ export class StorageService {
       }
 
       this.saveToLocalStorage();
+      this.lastSyncError = null;
       this.setSyncStatus('synced');
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Google Drive Sync error:', err);
+      this.lastSyncError = err.message || '未知同步錯誤';
       this.setSyncStatus('error');
       return false;
     }
+  }
+
+  public getLastSyncError(): string | null {
+    return this.lastSyncError;
   }
 
   /**

@@ -2,7 +2,7 @@ import { AuthState, UserProfile } from '../types/auth';
 
 const STORAGE_AUTH_KEY = 'speedvocab_auth_state_v2';
 const STORAGE_LOCAL_PROFILES = 'speedvocab_local_profiles';
-const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata email profile openid';
 
 const DEFAULT_LOCAL_USER: UserProfile = {
   id: 'user_default',

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Delete, CornerDownLeft, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mic, MicOff, Delete, CornerDownLeft, AlertCircle, Sparkles } from 'lucide-react';
 import { useSpeech } from '../../hooks/useSpeech';
 
 interface VoiceInputProps {
@@ -21,14 +21,22 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
   useEffect(() => {
     setSpelledBuffer('');
     setErrorMessage(null);
+    stopVoiceSpelling();
   }, [targetWord]);
 
-  const handleToggleListening = useCallback(() => {
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopVoiceSpelling();
+    };
+  }, []);
+
+  const handleToggleListening = () => {
     if (isListening) {
       stopVoiceSpelling();
     } else {
       setErrorMessage(null);
-      startVoiceSpelling(
+      const started = startVoiceSpelling(
         (spelled) => {
           const cleaned = spelled.replace(/[^a-zA-Z]/g, '').toLowerCase();
           setSpelledBuffer(cleaned);
@@ -37,21 +45,14 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           setErrorMessage(err);
         }
       );
+      if (!started && !errorMessage) {
+        setErrorMessage('無法啟動語音辨識，請確認是否允許麥克風權限。');
+      }
     }
-  }, [isListening, startVoiceSpelling, stopVoiceSpelling]);
-
-  // Auto start listening on mount/word change
-  useEffect(() => {
-    if (!disabled && isSpeechRecognitionSupported) {
-      handleToggleListening();
-    }
-    return () => {
-      stopVoiceSpelling();
-    };
-  }, [targetWord]);
+  };
 
   const handleDeleteLast = () => {
-    setSpelledBuffer(prev => prev.slice(0, -1));
+    setSpelledBuffer((prev) => prev.slice(0, -1));
   };
 
   const handleClear = () => {
@@ -72,14 +73,14 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       {!isSpeechRecognitionSupported && (
         <div className="w-full max-w-md p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>您的瀏覽器可能不支援語音拼讀（建議使用 Google Chrome）。</span>
+          <span>您的瀏覽器可能不支援語音辨識（建議使用 Google Chrome 或 Edge 瀏覽器）。</span>
         </div>
       )}
 
       {errorMessage && (
         <div className="w-full max-w-md p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>語音辨識提示：{errorMessage}</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -106,12 +107,13 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
       <div className="w-full max-w-md p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col items-center gap-3 text-center shadow-lg">
         {/* Animated Mic Button */}
         <button
+          type="button"
           onClick={handleToggleListening}
           disabled={disabled || !isSpeechRecognitionSupported}
           className={`w-16 h-16 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-xl ${
             isListening
-              ? 'bg-rose-500 text-white animate-pulse-fast ring-4 ring-rose-500/30'
-              : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+              ? 'bg-rose-500 text-white animate-pulse ring-4 ring-rose-500/30 scale-105'
+              : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105'
           }`}
           title={isListening ? '點擊暫停語音辨識' : '點擊開始語音辨識'}
         >
@@ -119,16 +121,26 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
         </button>
 
         <div>
-          <div className="text-sm font-bold text-slate-200">
-            {isListening ? '🎙️ 正在聆聽字母拼讀...' : '點擊麥克風開始語音拼讀'}
+          <div className="text-sm font-bold text-slate-200 flex items-center justify-center gap-1.5">
+            {isListening ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                <span className="text-rose-300">正在聆聽字母拼讀...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                <span>點擊上方麥克風開始拼讀</span>
+              </>
+            )}
           </div>
-          <div className="text-xs text-slate-400 mt-0.5">
-            請清晰逐字唸出英文字母 (例如：A - P - P - L - E)
+          <div className="text-xs text-slate-400 mt-1">
+            可逐字唸出字母 (例如：A - P - P - L - E) 或直接唸出單字
           </div>
         </div>
 
         {/* Real-time Spelled Text */}
-        <div className="w-full min-h-[42px] px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-center">
+        <div className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-center">
           {spelledBuffer ? (
             <span className="font-mono text-xl font-bold text-indigo-300 tracking-widest uppercase">
               {spelledBuffer.split('').join(' ')}
@@ -141,6 +153,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
         {/* Editing Controls */}
         <div className="flex items-center gap-2 w-full pt-1">
           <button
+            type="button"
             onClick={handleDeleteLast}
             disabled={!spelledBuffer || disabled}
             className="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-colors"
@@ -150,6 +163,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={handleClear}
             disabled={!spelledBuffer || disabled}
             className="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs font-semibold text-slate-400 hover:text-rose-400 transition-colors"
@@ -158,6 +172,7 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!spelledBuffer || disabled}
             className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md"

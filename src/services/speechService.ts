@@ -1,72 +1,71 @@
-// Speech Synthesis & Recognition Service
-
 export class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
-  private selectedVoice: SpeechSynthesisVoice | null = null;
+  private isVoiceLoaded = false;
   private recognition: any = null;
-  private isListening: boolean = false;
+  private isListening = false;
 
   constructor() {
     this.initVoices();
-    this.initRecognition();
   }
 
+  // --- Web Speech API Synthesis (TTS) ---
   private initVoices() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
     }
 
-    const updateVoices = () => {
-      this.voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-      // Prefer Google US English, Samantha, Daniel, or natural voices
-      const preferred = this.voices.find(v => 
-        v.name.includes('Google') || 
-        v.name.includes('Natural') || 
-        v.name.includes('Samantha') || 
-        v.name.includes('Daniel') ||
-        v.lang === 'en-US'
-      );
-      this.selectedVoice = preferred || this.voices[0] || null;
+    const load = () => {
+      this.voices = window.speechSynthesis.getVoices();
+      this.isVoiceLoaded = this.voices.length > 0;
     };
 
-    updateVoices();
+    load();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = updateVoices;
+      window.speechSynthesis.onvoiceschanged = load;
     }
   }
 
-  public getVoices(): SpeechSynthesisVoice[] {
-    if (this.voices.length === 0 && 'speechSynthesis' in window) {
-      this.voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+  public getAvailableVoices(): SpeechSynthesisVoice[] {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+    if (!this.isVoiceLoaded || this.voices.length === 0) {
+      this.voices = window.speechSynthesis.getVoices();
     }
-    return this.voices;
+    return this.voices.filter((v) => v.lang.startsWith('en'));
   }
 
-  public setVoiceByName(name: string) {
-    const v = this.voices.find(item => item.name === name);
-    if (v) this.selectedVoice = v;
-  }
-
-  /**
-   * Pronounce English word with configurable speed and pitch
-   */
-  public speakWord(word: string, rate: number = 0.95, pitch: number = 1.0): Promise<void> {
+  public speak(
+    text: string,
+    rate: number = 0.95,
+    pitch: number = 1.0,
+    voiceName?: string
+  ): Promise<void> {
     return new Promise((resolve) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
         resolve();
         return;
       }
 
-      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.rate = Math.max(0.5, Math.min(1.5, rate));
-      utterance.pitch = Math.max(0.5, Math.min(1.5, pitch));
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = Math.max(0.5, Math.min(2.0, rate));
+      utterance.pitch = Math.max(0.5, Math.min(2.0, pitch));
       utterance.lang = 'en-US';
 
-      if (this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
+      const voices = this.getAvailableVoices();
+      if (voiceName) {
+        const selectedVoice = voices.find((v) => v.name === voiceName);
+        if (selectedVoice) utterance.voice = selectedVoice;
+      } else {
+        const preferred = voices.find(
+          (v) =>
+            v.lang.startsWith('en-US') &&
+            (v.name.includes('Google') ||
+              v.name.includes('Natural') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Karen'))
+        );
+        if (preferred) utterance.voice = preferred;
       }
 
       utterance.onend = () => resolve();
@@ -83,128 +82,145 @@ export class SpeechService {
   }
 
   // --- Web Speech API Recognition for Voice Spelling ---
-  private initRecognition() {
-    if (typeof window === 'undefined') return;
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      this.recognition = new SpeechRecognition();
-      this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
-      this.recognition.maxAlternatives = 3;
-    }
-  }
-
   public isSpeechRecognitionSupported(): boolean {
+    if (typeof window === 'undefined') return false;
     return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   }
 
   /**
    * Start listening for voice spelling
-   * Calls onLetter callback when new letters are recognized
    */
   public startVoiceSpelling(
     onSpelledUpdate: (spelledLetters: string, isFinal: boolean) => void,
     onError?: (error: string) => void
-  ) {
-    if (!this.recognition) {
-      onError?.('您的瀏覽器不支援語音辨識功能（建議使用 Chrome / Edge 瀏覽器）。');
-      return;
+  ): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const SpeechRecognitionClass =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionClass) {
+      onError?.('您的瀏覽器不支援語音辨識（建議使用 Google Chrome 或 Edge 瀏覽器）。');
+      return false;
     }
 
-    if (this.isListening) {
-      this.stopVoiceSpelling();
-    }
-
-    let recognizedBuffer = '';
-
-    this.recognition.onstart = () => {
-      this.isListening = true;
-    };
-
-    this.recognition.onresult = (event: any) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcript = event.results[i][0].transcript.toLowerCase();
-        if (event.results[i].isFinal) {
-          const parsed = this.parseLettersFromTranscript(transcript);
-          recognizedBuffer += parsed;
-          onSpelledUpdate(recognizedBuffer, true);
-        } else {
-          interim += transcript;
-        }
-      }
-
-      if (interim) {
-        const interimLetters = this.parseLettersFromTranscript(interim);
-        onSpelledUpdate(recognizedBuffer + interimLetters, false);
-      }
-    };
-
-    this.recognition.onerror = (event: any) => {
-      if (event.error !== 'no-speech') {
-        onError?.(event.error);
-      }
-    };
-
-    this.recognition.onend = () => {
-      this.isListening = false;
-    };
+    // Stop any existing instance
+    this.stopVoiceSpelling();
 
     try {
+      this.recognition = new SpeechRecognitionClass();
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
+      this.recognition.lang = 'en-US';
+      this.recognition.maxAlternatives = 3;
+
+      let accumulated = '';
+
+      this.recognition.onstart = () => {
+        this.isListening = true;
+      };
+
+      this.recognition.onresult = (event: any) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0]?.transcript?.toLowerCase() || '';
+          if (event.results[i].isFinal) {
+            const parsed = this.parseLettersFromTranscript(transcript);
+            accumulated += parsed;
+            onSpelledUpdate(accumulated, true);
+          } else {
+            interim += transcript;
+          }
+        }
+
+        if (interim) {
+          const interimParsed = this.parseLettersFromTranscript(interim);
+          onSpelledUpdate(accumulated + interimParsed, false);
+        }
+      };
+
+      this.recognition.onerror = (event: any) => {
+        console.warn('Speech Recognition error event:', event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          onError?.('請允許瀏覽器麥克風權限以進行語音拼讀。');
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          onError?.(`語音辨識提示：${event.error}`);
+        }
+      };
+
+      this.recognition.onend = () => {
+        this.isListening = false;
+      };
+
       this.recognition.start();
-    } catch {
-      // recognition already started
+      return true;
+    } catch (err: any) {
+      console.error('Failed to start speech recognition:', err);
+      onError?.(err.message || '無法啟動語音辨識');
+      this.isListening = false;
+      return false;
     }
   }
 
   public stopVoiceSpelling() {
-    if (this.recognition && this.isListening) {
+    if (this.recognition) {
       try {
+        this.recognition.onend = null;
+        this.recognition.onerror = null;
         this.recognition.stop();
+        this.recognition.abort();
       } catch {
         // ignore
       }
+      this.recognition = null;
       this.isListening = false;
     }
+  }
+
+  public getIsListening(): boolean {
+    return this.isListening;
   }
 
   /**
    * Parse letter strings from spoken words / letters
    */
-  private parseLettersFromTranscript(text: string): string {
+  public parseLettersFromTranscript(text: string): string {
     const letterMap: Record<string, string> = {
-      'ay': 'a', 'eh': 'a', 'alpha': 'a',
-      'bee': 'b', 'bravo': 'b', 'be': 'b',
-      'see': 'c', 'sea': 'c', 'charlie': 'c', 'si': 'c',
-      'dee': 'd', 'delta': 'd',
-      'ee': 'e', 'echo': 'e',
-      'ef': 'f', 'foxtrot': 'f',
-      'gee': 'g', 'golf': 'g', 'ji': 'g',
-      'aitch': 'h', 'hotel': 'h', 'age': 'h',
-      'eye': 'i', 'india': 'i', 'ai': 'i',
-      'jay': 'j', 'juliet': 'j',
-      'kay': 'k', 'kilo': 'k',
-      'el': 'l', 'lima': 'l',
-      'em': 'm', 'mike': 'm',
-      'en': 'n', 'november': 'n',
-      'oh': 'o', 'oscar': 'o',
-      'pee': 'p', 'papa': 'p',
-      'cue': 'q', 'quebec': 'q',
-      'ar': 'r', 'are': 'r', 'romeo': 'r',
-      'es': 's', 'sierra': 's',
-      'tee': 't', 'tango': 't', 'tea': 't',
-      'you': 'u', 'uniform': 'u',
-      'vee': 'v', 'victor': 'v',
-      'double you': 'w', 'whiskey': 'w',
-      'ex': 'x', 'x-ray': 'x',
-      'why': 'y', 'yankee': 'y',
-      'zee': 'z', 'zed': 'z', 'zulu': 'z',
+      'ay': 'a', 'eh': 'a', 'alpha': 'a', 'a': 'a', 'hey': 'a',
+      'bee': 'b', 'bravo': 'b', 'be': 'b', 'b': 'b',
+      'see': 'c', 'sea': 'c', 'charlie': 'c', 'si': 'c', 'c': 'c',
+      'dee': 'd', 'delta': 'd', 'd': 'd',
+      'ee': 'e', 'echo': 'e', 'e': 'e', 'he': 'e',
+      'ef': 'f', 'foxtrot': 'f', 'f': 'f', 'eff': 'f',
+      'gee': 'g', 'golf': 'g', 'ji': 'g', 'g': 'g',
+      'aitch': 'h', 'hotel': 'h', 'age': 'h', 'h': 'h', 'eight': 'h',
+      'eye': 'i', 'india': 'i', 'ai': 'i', 'i': 'i',
+      'jay': 'j', 'juliet': 'j', 'j': 'j',
+      'kay': 'k', 'kilo': 'k', 'k': 'k', 'ok': 'k',
+      'el': 'l', 'lima': 'l', 'l': 'l', 'ell': 'l',
+      'em': 'm', 'mike': 'm', 'm': 'm',
+      'en': 'n', 'november': 'n', 'n': 'n', 'and': 'n',
+      'oh': 'o', 'oscar': 'o', 'o': 'o',
+      'pee': 'p', 'papa': 'p', 'p': 'p', 'pea': 'p',
+      'cue': 'q', 'quebec': 'q', 'q': 'q', 'queue': 'q',
+      'ar': 'r', 'are': 'r', 'romeo': 'r', 'r': 'r', 'our': 'r',
+      'es': 's', 'sierra': 's', 's': 's', 'yes': 's',
+      'tee': 't', 'tango': 't', 'tea': 't', 't': 't',
+      'you': 'u', 'uniform': 'u', 'u': 'u',
+      'vee': 'v', 'victor': 'v', 'v': 'v', 'we': 'v',
+      'double you': 'w', 'whiskey': 'w', 'w': 'w', 'double-u': 'w',
+      'ex': 'x', 'x-ray': 'x', 'x': 'x',
+      'why': 'y', 'yankee': 'y', 'y': 'y',
+      'zee': 'z', 'zed': 'z', 'zulu': 'z', 'z': 'z',
     };
 
     // Clean up text
-    const words = text.toLowerCase().replace(/[^a-z\s-]/g, ' ').split(/\s+/).filter(Boolean);
+    const words = text
+      .toLowerCase()
+      .replace(/[^a-z\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+
     let result = '';
 
     for (const w of words) {
@@ -213,7 +229,7 @@ export class SpeechService {
       } else if (letterMap[w]) {
         result += letterMap[w];
       } else {
-        // If user says whole word or phonemes, keep alpha characters
+        // If user spells or says the word, take alpha letters
         result += w.replace(/[^a-z]/g, '');
       }
     }

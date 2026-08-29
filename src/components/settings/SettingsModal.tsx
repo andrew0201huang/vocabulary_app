@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Key, Volume2, Gauge, ShieldAlert, HelpCircle, Check, Play } from 'lucide-react';
+import { Settings, Key, Volume2, Gauge, ShieldAlert, HelpCircle, Check, Play, Headphones } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { AppSettings } from '../../types/vocabulary';
 import { useSpeech } from '../../hooks/useSpeech';
@@ -23,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [speechRate, setSpeechRate] = useState(settings.speechRate || 0.95);
   const [speechPitch, setSpeechPitch] = useState(settings.speechPitch || 1.0);
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(settings.soundEffectsEnabled ?? true);
+  const [chineseDelaySeconds, setChineseDelaySeconds] = useState(settings.chineseDelaySeconds ?? 10);
   
   // Speed Thresholds in seconds for user convenience
   const [lightningSec, setLightningSec] = useState((settings.speedThresholds.lightningMs / 1000).toFixed(1));
@@ -40,6 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       speechRate: Number(speechRate),
       speechPitch: Number(speechPitch),
       soundEffectsEnabled,
+      chineseDelaySeconds: Number(chineseDelaySeconds),
       speedThresholds: {
         lightningMs: Math.round(Number(lightningSec) * 1000),
         goodMs: Math.round(Number(goodSec) * 1000),
@@ -170,7 +172,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Section 3: Speed Thresholds Configuration */}
+        {/* Section 3: Listening-First Prompt Delay */}
+        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Headphones className="w-4 h-4 text-cyan-400" />
+              <span>聽音優先模式：延遲顯示中文釋義時間</span>
+            </label>
+            <span className="text-xs font-mono text-cyan-300 font-bold">
+              {chineseDelaySeconds === 0 ? '即時顯示' : `${chineseDelaySeconds} 秒`}
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            出題時先播放英文發音，經過指定秒數（預設 10 秒）後自動顯示中文翻譯
+          </div>
+          <div className="grid grid-cols-4 gap-2 pt-1">
+            {[
+              { sec: 0, label: '0s (即時顯示)' },
+              { sec: 5, label: '5 秒' },
+              { sec: 10, label: '10 秒 (預設)' },
+              { sec: 15, label: '15 秒' },
+            ].map(({ sec, label }) => (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => setChineseDelaySeconds(sec)}
+                className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                  chineseDelaySeconds === sec
+                    ? 'border-cyan-500 bg-cyan-950/50 text-cyan-200 shadow-md ring-1 ring-cyan-500/30'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 4: Speed Thresholds Configuration */}
         <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
           <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
             <Gauge className="w-4 h-4 text-indigo-400" />

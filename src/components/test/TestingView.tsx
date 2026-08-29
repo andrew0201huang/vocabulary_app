@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, HelpCircle, SkipForward, ArrowLeft, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import { Volume2, HelpCircle, SkipForward, ArrowLeft, CheckCircle2, XCircle, RotateCcw, Headphones, Eye } from 'lucide-react';
 import { WordItem, RoundConfig, WordTestResult, RoundSummary, AppSettings, InputMode } from '../../types/vocabulary';
 import { calculateSpacedRepetition, getSpeedCategory } from '../../services/spacedRepetition';
 import { useSpeech } from '../../hooks/useSpeech';
@@ -60,6 +60,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
   const [showHint, setShowHint] = useState<boolean>(false);
   const [isInputError, setIsInputError] = useState<boolean>(false);
+  const [forceShowChinese, setForceShowChinese] = useState<boolean>(false);
 
   const roundStartedAtRef = useRef<string>(new Date().toISOString());
 
@@ -142,6 +143,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
     setShowHint(false);
     setIsInputError(false);
+    setForceShowChinese(false);
     setFeedback(null);
     setElapsedMs(0);
 
@@ -412,10 +414,43 @@ export const TestingView: React.FC<TestingViewProps> = ({
           ))}
         </div>
 
-        {/* Visual Prompt: Chinese Translation */}
-        <div className="text-2xl sm:text-4xl font-extrabold text-slate-100 tracking-wide my-1">
-          {currentWord.translation}
-        </div>
+        {/* Visual Prompt: Chinese Translation vs. Listening Delay Card */}
+        {(() => {
+          const chineseDelaySec = config.chineseDelaySeconds ?? settings.chineseDelaySeconds ?? 10;
+          const delayRemainingSec = Math.max(0, Math.ceil(chineseDelaySec - elapsedMs / 1000));
+          const isChineseRevealed = forceShowChinese || delayRemainingSec === 0 || chineseDelaySec === 0;
+
+          if (isChineseRevealed) {
+            return (
+              <div className="text-2xl sm:text-4xl font-extrabold text-slate-100 tracking-wide my-1 transition-all duration-300 animate-fade-in">
+                {currentWord.translation}
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-center gap-1.5 my-1 w-full max-w-sm">
+              <div className="flex items-center gap-2 text-indigo-300 font-bold text-sm">
+                <Headphones className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>聽音拼寫挑戰中...</span>
+                <span className="font-mono bg-indigo-900/80 px-2 py-0.5 rounded-lg border border-indigo-400/40 text-indigo-200 text-xs">
+                  {delayRemainingSec}s
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                前 {chineseDelaySec} 秒聽音拼寫，倒數結束後自動顯示中文釋義
+              </div>
+              <button
+                type="button"
+                onClick={() => setForceShowChinese(true)}
+                className="text-[11px] text-slate-400 hover:text-indigo-300 underline mt-0.5 flex items-center gap-1 transition-colors"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>提前顯示中文釋義</span>
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Audio Pronunciation Button */}
         <div className="flex items-center gap-2 mt-1">

@@ -39,6 +39,7 @@ export interface RoundConfig {
   autoPlayAudio: boolean;
   showPhoneticHint: boolean;
   handwritingSelfGrade: boolean; // For handwriting mode: self-grade vs auto
+  chineseDelaySeconds: number;  // Delay in seconds before revealing Chinese definition (default: 10)
 }
 
 export interface WordTestResult {
@@ -87,6 +88,7 @@ export interface AppSettings {
   defaultRoundWordCount: number;
   defaultInputMode: InputMode;
   autoPlayPronunciation: boolean;
+  chineseDelaySeconds: number; // Default 10s listening delay
   darkMode: boolean;
 }
 

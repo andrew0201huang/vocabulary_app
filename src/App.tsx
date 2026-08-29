@@ -109,6 +109,7 @@ export const App: React.FC = () => {
       autoPlayAudio: true,
       showPhoneticHint: false,
       handwritingSelfGrade: true,
+      chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
     });
     setLastRoundSummary(null);
     setIsTestingActive(true);
@@ -124,7 +125,8 @@ export const App: React.FC = () => {
     if (success) {
       addToast('success', '同步成功', '已與 Google Drive 雲端同步最新單字庫');
     } else {
-      addToast('error', '同步失敗', '請確認網路連線或重新登入 Google');
+      const errDetail = storageService.getLastSyncError();
+      addToast('error', '同步異常', errDetail || '請確認網路連線或重新登入 Google');
     }
   };
 
@@ -235,6 +237,7 @@ export const App: React.FC = () => {
                 autoPlayAudio: true,
                 showPhoneticHint: false,
                 handwritingSelfGrade: true,
+                chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
               });
               setActiveTab('test');
             }}
