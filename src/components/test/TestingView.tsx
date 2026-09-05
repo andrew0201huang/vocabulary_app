@@ -10,6 +10,8 @@ import { HandwritingInput } from './HandwritingInput';
 import { VoiceInput } from './VoiceInput';
 import { WhisperVoiceInput } from './WhisperVoiceInput';
 import { normalizeWord } from '../../utils/textUtils';
+import { speechService } from '../../services/speechService';
+import { dbg } from '../../utils/debugLogger';
 
 interface TestingViewProps {
   config: RoundConfig;
@@ -184,7 +186,13 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
     // Auto play audio pronunciation if configured
     if (config.autoPlayAudio) {
-      speak(currentWord.word);
+      if (speechService.isIOSDevice && !speechService.iosAudioUnlocked) {
+        // iOS: can't auto-play until user taps something — the play button below will handle it
+        dbg.warn('iOS audio not unlocked yet — skipping auto-play', currentWord.word);
+      } else {
+        dbg.info('Auto-playing word', currentWord.word);
+        speak(currentWord.word);
+      }
     }
 
     // Start precision timer
@@ -490,7 +498,12 @@ export const TestingView: React.FC<TestingViewProps> = ({
         {/* Audio Pronunciation Button */}
         <div className="flex items-center gap-2 mt-1">
           <button
-            onClick={() => speak(currentWord.word)}
+            onClick={() => {
+              // iOS: unlock audio engine on first user tap, then speak
+              speechService.unlockIOSAudio();
+              dbg.info('Play button tapped', currentWord.word);
+              speak(currentWord.word);
+            }}
             disabled={isSpeaking}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold transition-all transform active:scale-95"
             title="播放發音 (快速鍵：空白鍵)"

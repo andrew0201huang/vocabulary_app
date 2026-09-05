@@ -12,6 +12,7 @@ import { ImportExportModal } from './components/bank/ImportExportModal';
 import { StatsView } from './components/stats/StatsView';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { UserLoginModal } from './components/auth/UserLoginModal';
+import { DebugPanel } from './components/debug/DebugPanel';
 import { useVocabulary } from './hooks/useVocabulary';
 import { useAuth } from './hooks/useAuth';
 import { RoundConfig, RoundSummary, WordItem } from './types/vocabulary';
@@ -147,6 +148,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Debug Panel (floating 🐛 button — single tap opens logs, double tap enables recording) */}
+      <DebugPanel />
       {/* App Header */}
       <Header
         activeTab={activeTab}
