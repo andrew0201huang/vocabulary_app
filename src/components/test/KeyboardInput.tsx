@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { CornerDownLeft } from 'lucide-react';
 
 interface KeyboardInputProps {
@@ -8,14 +8,25 @@ interface KeyboardInputProps {
   isError?: boolean;
 }
 
-export const KeyboardInput: React.FC<KeyboardInputProps> = ({
+export interface KeyboardInputHandle {
+  focus: () => void;
+}
+
+export const KeyboardInput = forwardRef<KeyboardInputHandle, KeyboardInputProps>(({
   targetWord,
   onSubmit,
   disabled = false,
   isError = false,
-}) => {
+}, ref) => {
   const [value, setValue] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Expose focus() to parent via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRef.current?.focus();
+    },
+  }));
 
   // Reset and auto-focus when target word changes
   useEffect(() => {
@@ -116,4 +127,6 @@ export const KeyboardInput: React.FC<KeyboardInputProps> = ({
       </div>
     </div>
   );
-};
+});
+
+KeyboardInput.displayName = 'KeyboardInput';

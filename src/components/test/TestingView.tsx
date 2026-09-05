@@ -5,7 +5,7 @@ import { calculateSpacedRepetition, getSpeedCategory, isWordDueForReview } from 
 import { useSpeech } from '../../hooks/useSpeech';
 import { useAudioFx } from '../../hooks/useAudioFx';
 import { SpeedGauge } from './SpeedGauge';
-import { KeyboardInput } from './KeyboardInput';
+import { KeyboardInput, KeyboardInputHandle } from './KeyboardInput';
 import { HandwritingInput } from './HandwritingInput';
 import { VoiceInput } from './VoiceInput';
 import { WhisperVoiceInput } from './WhisperVoiceInput';
@@ -65,7 +65,11 @@ export const TestingView: React.FC<TestingViewProps> = ({
   const [isInputError, setIsInputError] = useState<boolean>(false);
   const [forceShowChinese, setForceShowChinese] = useState<boolean>(false);
 
+  // iOS play dialog state: null = hidden, 'unlocking' | 'speaking' | 'done'
+  const [playDialogStep, setPlayDialogStep] = useState<'unlocking' | 'speaking' | 'done' | null>(null);
+
   const roundStartedAtRef = useRef<string>(new Date().toISOString());
+  const keyboardInputRef = useRef<KeyboardInputHandle>(null);
 
   const { speak, isSpeaking } = useSpeech(settings);
   const { playCorrect, playWrong, playFanfare } = useAudioFx(settings);
@@ -495,14 +499,76 @@ export const TestingView: React.FC<TestingViewProps> = ({
           );
         })()}
 
+        {/* iOS Play Dialog (shows unlock progress + auto-closes) */}
+        {playDialogStep !== null && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setPlayDialogStep(null)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl px-8 py-6 flex flex-col items-center gap-4 shadow-2xl mx-4 min-w-[240px]"
+              onClick={e => e.stopPropagation()}>
+              {playDialogStep === 'unlocking' && (
+                <>
+                  <div className="text-3xl animate-pulse">🔓</div>
+                  <div className="text-sm font-bold text-amber-300">解鎖 iOS 音訊引擎...</div>
+                  <div className="text-xs text-slate-400">iOS 首次播放需要使用者手勢授權</div>
+                  <div className="flex gap-1">
+                    {[0,1,2].map(i => (
+                      <div key={i} className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"
+                        style={{ animationDelay: `${i * 150}ms` }} />
+                    ))}
+                  </div>
+                </>
+              )}
+              {playDialogStep === 'speaking' && (
+                <>
+                  <div className="text-3xl animate-bounce">🔊</div>
+                  <div className="text-sm font-bold text-indigo-300">
+                    播放：<span className="text-white font-mono text-lg">{currentWord.word}</span>
+                  </div>
+                  <div className="flex gap-0.5 items-center h-6">
+                    {[4,7,5,8,3,6,4].map((h, i) => (
+                      <div key={i} className="w-1.5 rounded-full bg-indigo-400 animate-pulse"
+                        style={{ height: `${h * 3}px`, animationDelay: `${i * 80}ms` }} />
+                    ))}
+                  </div>
+                  <div className="text-xs text-slate-500">播放完畢後自動跳至輸入格</div>
+                </>
+              )}
+              {playDialogStep === 'done' && (
+                <>
+                  <div className="text-3xl">✅</div>
+                  <div className="text-sm font-bold text-emerald-300">播放完畢</div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Audio Pronunciation Button */}
         <div className="flex items-center gap-2 mt-1">
           <button
-            onClick={() => {
-              // iOS: unlock audio engine on first user tap, then speak
-              speechService.unlockIOSAudio();
+            onClick={async () => {
               dbg.info('Play button tapped', currentWord.word);
-              speak(currentWord.word);
+
+              if (speechService.isIOSDevice) {
+                // Step 1: show unlock dialog + call unlock in user-gesture context
+                setPlayDialogStep('unlocking');
+                speechService.unlockIOSAudio();
+                // brief pause to let unlock utterance start
+                await new Promise(r => setTimeout(r, 400));
+              }
+
+              // Step 2: show speaking dialog
+              setPlayDialogStep('speaking');
+              dbg.info('Starting speak()');
+              await speak(currentWord.word);
+              dbg.ok('speak() resolved');
+
+              // Step 3: done — auto-close dialog and focus input
+              setPlayDialogStep('done');
+              setTimeout(() => {
+                setPlayDialogStep(null);
+                keyboardInputRef.current?.focus();
+              }, 600);
             }}
             disabled={isSpeaking}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold transition-all transform active:scale-95"
@@ -613,6 +679,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
       <div className="w-full">
         {currentInputMode === 'keyboard' && (
           <KeyboardInput
+            ref={keyboardInputRef}
             targetWord={currentWord.word}
             onSubmit={handleKeyboardSubmit}
             disabled={feedback?.show}
