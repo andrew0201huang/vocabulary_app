@@ -10,6 +10,8 @@ export interface ParsedWordEntry {
   exampleZh?: string;
   tags: string[];
   isDuplicate?: boolean;
+  /** True when only a word was provided (no translation) — needs dictionary lookup */
+  needsLookup?: boolean;
 }
 
 export interface ParseResult {
@@ -19,8 +21,70 @@ export interface ParseResult {
   totalParsed: number;
 }
 
+// ── Detect language ────────────────────────────────────────────────────────────
+const CJK = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
+const ENG_WORD = /^[a-zA-Z][a-zA-Z0-9\s\-'.]*$/;
+
+function isChinese(s: string) { return CJK.test(s); }
+function isEnglishWord(s: string) { return ENG_WORD.test(s.trim()); }
+
+// ── Smart tokenizer ────────────────────────────────────────────────────────────
 /**
- * Parses multi-line pasted text from Excel/Sheets (Tab-separated) or CSV or Colon/Dash formatted text.
+ * Tries every possible separator to split a line into (word, translation).
+ * Returns null only if the line is completely blank or unparseable into
+ * any meaningful token.
+ */
+function tokenizeLine(line: string): { word: string; translation: string; pos?: string; phonetic?: string } | null {
+  if (!line) return null;
+
+  // 1. Tab-separated (Excel/Sheets)
+  if (line.includes('\t')) {
+    const cols = line.split('\t').map(c => c.trim().replace(/^["']|["']$/g, ''));
+    const w = cols[0];
+    const t = cols[1] ?? '';
+    let pos = '', phonetic = '';
+    if (cols[2]) {
+      if (/^\[.*\]$|^\/.*\/$/.test(cols[2])) phonetic = cols[2];
+      else pos = cols[2];
+    }
+    if (cols[3] && !phonetic && /^\[.*\]$|^\/.*\/$/.test(cols[3])) phonetic = cols[3];
+    return { word: w, translation: t, pos, phonetic };
+  }
+
+  // 2. Dash / colon / colon-fullwidth separators
+  const dashMatch = line.match(/^(.+?)\s*[-—–:：]\s*(.+)$/);
+  if (dashMatch) {
+    return { word: dashMatch[1].trim(), translation: dashMatch[2].trim() };
+  }
+
+  // 3. Comma-separated (CSV)
+  if (line.includes(',')) {
+    const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+    return { word: cols[0], translation: cols[1] ?? '' };
+  }
+
+  // 4. "English Chinese" (space) — first token English, rest Chinese
+  const spaceMatch = line.match(/^([a-zA-Z][a-zA-Z0-9\-'.]*)\s+([\s\S]+)$/);
+  if (spaceMatch) {
+    return { word: spaceMatch[1].trim(), translation: spaceMatch[2].trim() };
+  }
+
+  // 5. Single token — could be just an English word or just Chinese
+  const single = line.trim();
+  if (isEnglishWord(single)) {
+    return { word: single, translation: '' };     // needs lookup
+  }
+  if (isChinese(single)) {
+    return { word: single, translation: '' };     // Chinese word, needs reverse lookup
+  }
+
+  return null;
+}
+
+/**
+ * Universal parser — accepts any reasonable format.
+ * Lines with only an English word (no translation) are marked needsLookup=true.
+ * Lines with only Chinese are passed through as word=chinese with needsLookup.
  */
 export function parseBatchWords(
   rawText: string,
@@ -39,109 +103,45 @@ export function parseBatchWords(
   lines.forEach((rawLine, idx) => {
     const lineNumber = idx + 1;
     const line = rawLine.trim();
-    if (!line) return; // Skip empty lines
+    if (!line) return;
 
-    let word = '';
-    let translation = '';
-    let pos = '';
-    let phonetic = '';
-    let exampleEn = '';
-    let exampleZh = '';
-    let tags = [...defaultTags];
-
-    if (line.includes('\t')) {
-      // Tab-separated (Excel / Google Sheets direct copy)
-      const cols = line.split('\t').map(c => c.trim().replace(/^["']|["']$/g, ''));
-      word = cols[0] || '';
-      translation = cols[1] || '';
-      if (cols[2]) {
-        if (/^\[.*\]$|^\/.*\/$/.test(cols[2])) {
-          phonetic = cols[2];
-        } else if (/^[a-z]+\.?$/i.test(cols[2])) {
-          pos = cols[2];
-        } else {
-          pos = cols[2];
-        }
-      }
-      if (cols[3]) {
-        if (!phonetic && (/^\[.*\]$|^\/.*\/$/.test(cols[3]))) {
-          phonetic = cols[3];
-        } else {
-          exampleEn = cols[3];
-        }
-      }
-      if (cols[4]) exampleZh = cols[4];
-      if (cols[5]) tags.push(...cols[5].split(/[,/]/).map(t => t.trim()).filter(Boolean));
-    } else if (line.includes(',')) {
-      // Comma-separated (CSV format)
-      // Basic CSV token parser
-      const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
-      word = cols[0] || '';
-      translation = cols[1] || '';
-      if (cols[2]) pos = cols[2];
-      if (cols[3]) phonetic = cols[3];
-      if (cols[4]) exampleEn = cols[4];
-      if (cols[5]) exampleZh = cols[5];
-    } else if (line.includes(' - ') || line.includes(' — ') || line.includes('：') || line.includes(':')) {
-      // Dash or colon separated (e.g. "apple - 蘋果" or "apple: 蘋果")
-      const parts = line.split(/\s*[-—:：]\s*/);
-      word = parts[0] || '';
-      translation = parts.slice(1).join(' ') || '';
-    } else {
-      // Space separated heuristic if first word is English and rest is Chinese
-      const match = line.match(/^([a-zA-Z\s\-']+)\s+([\u4e00-\u9fa5\w\s.,;()（）/]+)$/);
-      if (match) {
-        word = match[1].trim();
-        translation = match[2].trim();
-      } else {
-        invalidLines.push({
-          line: lineNumber,
-          text: line,
-          error: '無法辨識格式。請確認包含單字與中文釋義（Tab、逗號或「單字 - 中文」格式）。',
-        });
-        return;
-      }
-    }
-
-    // Clean word
-    word = word.trim().toLowerCase();
-    // Strip surrounding quotes or parentheses
-    word = word.replace(/^["'(\[]+|["')\]]+$/g, '');
-    translation = translation.trim();
-
-    if (!word || !/^[a-zA-Z\s\-'.]+$/.test(word)) {
-      invalidLines.push({
-        line: lineNumber,
-        text: line,
-        error: `英文單字格式不符：「${word}」`,
-      });
+    const parsed = tokenizeLine(line);
+    if (!parsed) {
+      invalidLines.push({ line: lineNumber, text: line, error: '無法解析' });
       return;
     }
 
-    if (!translation) {
-      invalidLines.push({
-        line: lineNumber,
-        text: line,
-        error: `缺少中文釋義：「${word}」`,
-      });
+    let { word, translation, pos = '', phonetic = '' } = parsed;
+
+    // Normalise word
+    word = word.trim().replace(/^["'(\[]+|["')\]]+$/g, '').toLowerCase();
+
+    // Determine if this needs a dictionary lookup
+    const needsLookup = !translation || !translation.trim();
+
+    // If neither English nor Chinese, skip
+    if (!word) {
+      invalidLines.push({ line: lineNumber, text: line, error: '空白單字' });
       return;
     }
+
+    const tags = [...defaultTags];
 
     const entry: ParsedWordEntry = {
       word,
-      translation,
+      translation: translation.trim(),
       pos: pos || undefined,
       phonetic: phonetic || undefined,
-      exampleEn: exampleEn || undefined,
-      exampleZh: exampleZh || undefined,
       tags: Array.from(new Set(tags)),
+      needsLookup,
     };
 
-    if (existingWordMap.has(word) || seenInBatch.has(word)) {
+    const key = word.toLowerCase();
+    if (existingWordMap.has(key) || seenInBatch.has(key)) {
       entry.isDuplicate = true;
       duplicates.push(entry);
     } else {
-      seenInBatch.add(word);
+      seenInBatch.add(key);
       validWords.push(entry);
     }
   });
@@ -154,9 +154,113 @@ export function parseBatchWords(
   };
 }
 
+// ── Dictionary lookup ──────────────────────────────────────────────────────────
+
+export interface DictResult {
+  translation: string;
+  pos?: string;
+  phonetic?: string;
+  exampleEn?: string;
+}
+
 /**
- * Merge parsed entries into word database
+ * Look up an English word via Free Dictionary API + MyMemory translation.
+ * Returns basic info. Falls back gracefully on network error.
  */
+export async function lookupWord(word: string): Promise<DictResult> {
+  const clean = word.trim().toLowerCase();
+
+  try {
+    // 1. Free Dictionary API — English definition + phonetic + example
+    const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(clean)}`);
+
+    let pos: string | undefined;
+    let phonetic: string | undefined;
+    let exampleEn: string | undefined;
+    let enDef: string | undefined;
+
+    if (dictRes.ok) {
+      const data = await dictRes.json();
+      const entry = data[0];
+      phonetic = entry?.phonetic || entry?.phonetics?.find((p: any) => p.text)?.text;
+      const meanings = entry?.meanings ?? [];
+      const firstMeaning = meanings[0];
+      if (firstMeaning) {
+        pos = firstMeaning.partOfSpeech;
+        const firstDef = firstMeaning.definitions?.[0];
+        if (firstDef) {
+          enDef = firstDef.definition;
+          exampleEn = firstDef.example;
+        }
+      }
+    }
+
+    // 2. MyMemory — translate definition or word to Chinese
+    const textToTranslate = enDef ? `${clean}; ${enDef}` : clean;
+    const transRes = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=en|zh-TW`
+    );
+    let translation = '';
+    if (transRes.ok) {
+      const transData = await transRes.json();
+      translation = transData?.responseData?.translatedText ?? '';
+      // Sometimes MyMemory returns the original text unchanged if it fails
+      if (translation.toLowerCase() === textToTranslate.toLowerCase()) translation = '';
+    }
+
+    if (!translation) translation = `（${clean} 的中文釋義）`;
+
+    return { translation, pos, phonetic, exampleEn };
+  } catch {
+    return { translation: `（查詢失敗 — ${clean}）` };
+  }
+}
+
+/**
+ * Batch lookup for entries with needsLookup=true.
+ * Calls onProgress(done, total) after each lookup.
+ */
+export async function lookupMissingWords(
+  entries: ParsedWordEntry[],
+  onProgress?: (done: number, total: number) => void
+): Promise<ParsedWordEntry[]> {
+  const toLookup = entries.filter(e => e.needsLookup);
+  const total = toLookup.length;
+  let done = 0;
+
+  const results = await Promise.allSettled(
+    toLookup.map(async entry => {
+      const result = await lookupWord(entry.word);
+      done++;
+      onProgress?.(done, total);
+      return { entry, result };
+    })
+  );
+
+  const resultMap = new Map<string, DictResult>();
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      resultMap.set(r.value.entry.word, r.value.result);
+    }
+  });
+
+  return entries.map(entry => {
+    if (!entry.needsLookup) return entry;
+    const looked = resultMap.get(entry.word);
+    if (!looked) return entry;
+    return {
+      ...entry,
+      translation: looked.translation,
+      pos: entry.pos || looked.pos,
+      phonetic: entry.phonetic || looked.phonetic,
+      exampleEn: entry.exampleEn || looked.exampleEn,
+      needsLookup: false,
+    };
+  });
+}
+
+// ── Merge ──────────────────────────────────────────────────────────────────────
+
 export function mergeParsedWords(
   existingWords: WordItem[],
   entriesToAdd: ParsedWordEntry[],
@@ -172,7 +276,7 @@ export function mergeParsedWords(
         const current = wordMap.get(key)!;
         wordMap.set(key, {
           ...current,
-          translation: entry.translation,
+          translation: entry.translation || current.translation,
           pos: entry.pos || current.pos,
           phonetic: entry.phonetic || current.phonetic,
           exampleEn: entry.exampleEn || current.exampleEn,
@@ -189,9 +293,8 @@ export function mergeParsedWords(
   return Array.from(wordMap.values());
 }
 
-/**
- * Export word bank to CSV string with UTF-8 BOM
- */
+// ── Export utilities ───────────────────────────────────────────────────────────
+
 export function exportToCSV(words: WordItem[]): string {
   const headers = ['單字', '中文釋義', '詞性', '音標', '標籤', '熟悉度', '連續正確', '測驗次數', '最佳反應時間(秒)', '平均反應時間(秒)', '上次複習時間', '下次複習時間'];
   const rows = words.map(w => [
@@ -208,21 +311,13 @@ export function exportToCSV(words: WordItem[]): string {
     w.lastReviewedAt || '',
     w.nextReviewAt || '',
   ]);
-
-  // \uFEFF BOM ensures Excel opens UTF-8 Chinese characters properly without garbling
   return '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
 }
 
-/**
- * Export full database to JSON string
- */
 export function exportToJSON(data: any): string {
   return JSON.stringify(data, null, 2);
 }
 
-/**
- * Triggers browser file download
- */
 export function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
