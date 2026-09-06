@@ -310,6 +310,23 @@ export const App: React.FC = () => {
           replaceAllWords(newWords);
           addToast('success', '批次新增成功', `已將 ${addedCount} 個單字新增至單字庫`);
         }}
+        onStartTest={(newWords, importedTag) => {
+          replaceAllWords(newWords);
+          setIsBatchAddOpen(false);
+          setActiveTab('test');
+          // Start test immediately with all words of this tag
+          const taggedWords = newWords.filter(w => w.tags.includes(importedTag));
+          handleStartRound({
+            wordCount: taggedWords.length || 999,
+            filterMode: 'custom_tag',
+            customTag: importedTag,
+            inputMode: settings.defaultInputMode || 'keyboard',
+            autoPlayAudio: true,
+            showPhoneticHint: false,
+            handwritingSelfGrade: true,
+            chineseDelaySeconds: settings.chineseDelaySeconds ?? 10,
+          });
+        }}
       />
 
       <WordEditModal

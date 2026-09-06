@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   ClipboardPaste, CheckCircle2, Layers, AlertCircle, Search,
-  Loader2, RotateCcw, BookOpen,
+  Loader2, RotateCcw, BookOpen, Play,
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { WordItem } from '../../types/vocabulary';
@@ -14,7 +14,8 @@ interface BatchAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   existingWords: WordItem[];
-  onBatchAddSuccess: (newWords: WordItem[], addedCount: number) => void;
+  onBatchAddSuccess: (newWords: WordItem[], addedCount: number, importedTag: string) => void;
+  onStartTest: (newWords: WordItem[], importedTag: string) => void;
 }
 
 type Stage = 'input' | 'preview' | 'looking-up' | 'ready';
@@ -24,6 +25,7 @@ export const BatchAddModal: React.FC<BatchAddModalProps> = ({
   onClose,
   existingWords,
   onBatchAddSuccess,
+  onStartTest,
 }) => {
   const [pastedText, setPastedText] = useState('');
   const [defaultTags, setDefaultTags] = useState('自訂匯入');
@@ -69,14 +71,32 @@ export const BatchAddModal: React.FC<BatchAddModalProps> = ({
   }, [validEntries, dupEntries]);
 
   // ── Import ─────────────────────────────────────────────────────────────
-  const handleImport = useCallback(() => {
-    const toImport = overwriteExisting
+  const getToImport = useCallback(() => {
+    return overwriteExisting
       ? [...validEntries, ...dupEntries]
       : validEntries;
+  }, [validEntries, dupEntries, overwriteExisting]);
+
+  const handleImport = useCallback(() => {
+    const toImport = getToImport();
     const merged = mergeParsedWords(existingWords, toImport, overwriteExisting);
-    onBatchAddSuccess(merged, toImport.length);
+    const tag = defaultTags.split(/[,/，、]/)[0]?.trim() || '自訂匯入';
+    onBatchAddSuccess(merged, toImport.length, tag);
     handleClose();
-  }, [validEntries, dupEntries, overwriteExisting, existingWords, onBatchAddSuccess]);
+  }, [getToImport, existingWords, overwriteExisting, defaultTags, onBatchAddSuccess]);
+
+  const handleImportAndTest = useCallback(() => {
+    const toImport = getToImport();
+    const merged = mergeParsedWords(existingWords, toImport, overwriteExisting);
+    const tag = defaultTags.split(/[,/，、]/)[0]?.trim() || '自訂匯入';
+    onStartTest(merged, tag);
+    // Reset state (modal will be closed by parent)
+    setPastedText('');
+    setValidEntries([]);
+    setDupEntries([]);
+    setInvalidLines([]);
+    setStage('input');
+  }, [getToImport, existingWords, overwriteExisting, defaultTags, onStartTest]);
 
   const handleClose = () => {
     setPastedText('');
@@ -90,6 +110,8 @@ export const BatchAddModal: React.FC<BatchAddModalProps> = ({
   const importCount = overwriteExisting
     ? validEntries.length + dupEntries.length
     : validEntries.length;
+
+  const importedTag = defaultTags.split(/[,/，、]/)[0]?.trim() || '自訂匯入';
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -242,23 +264,38 @@ export const BatchAddModal: React.FC<BatchAddModalProps> = ({
             )}
 
             {/* Action buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStage('input')}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 shrink-0"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  重新編輯
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={importCount === 0}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-xs font-semibold"
+                >
+                  只匯入（{importCount} 個）
+                </button>
+              </div>
+              {/* Primary: Import & Start Test */}
               <button
                 type="button"
-                onClick={() => setStage('input')}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                重新編輯
-              </button>
-              <button
-                type="button"
-                onClick={handleImport}
+                onClick={handleImportAndTest}
                 disabled={importCount === 0}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold shadow-lg"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/40"
               >
-                確認匯入（{importCount} 個單字）
+                <Play className="w-4 h-4 fill-current" />
+                匯入並馬上測驗這 {importCount} 個單字
               </button>
+              <div className="text-xs text-slate-500 text-center">
+                標籤「{importedTag}」· 全部 {importCount} 題 · 鍵盤輸入
+              </div>
             </div>
           </>
         )}
