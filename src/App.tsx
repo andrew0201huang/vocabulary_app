@@ -17,6 +17,7 @@ import { useVocabulary } from './hooks/useVocabulary';
 import { useAuth } from './hooks/useAuth';
 import { RoundConfig, RoundSummary, WordItem } from './types/vocabulary';
 import { storageService } from './services/storageService';
+import { speechService } from './services/speechService';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('test');
@@ -80,6 +81,9 @@ export const App: React.FC = () => {
 
   // Start Test Round Handlers
   const handleStartRound = (config: RoundConfig) => {
+    // iOS: unlock audio engine here — this runs inside a user-gesture (button click),
+    // so subsequent auto-play calls from useEffect will work too.
+    speechService.unlockIOSAudio();
     setRoundConfig(config);
     setIsTestingActive(true);
     setLastRoundSummary(null);
@@ -103,6 +107,7 @@ export const App: React.FC = () => {
     const strugglingWords = words.filter((w) => strugglingWordIds.includes(w.id));
     if (strugglingWords.length === 0) return;
 
+    speechService.unlockIOSAudio();
     setRoundConfig({
       wordCount: strugglingWords.length,
       filterMode: 'struggling',

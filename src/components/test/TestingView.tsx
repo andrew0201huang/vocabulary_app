@@ -10,7 +10,6 @@ import { HandwritingInput } from './HandwritingInput';
 import { VoiceInput } from './VoiceInput';
 import { WhisperVoiceInput } from './WhisperVoiceInput';
 import { normalizeWord } from '../../utils/textUtils';
-import { speechService } from '../../services/speechService';
 import { dbg } from '../../utils/debugLogger';
 
 interface TestingViewProps {
@@ -188,15 +187,11 @@ export const TestingView: React.FC<TestingViewProps> = ({
     setFeedback(null);
     setElapsedMs(0);
 
-    // Auto play audio pronunciation if configured
+    // Auto play audio pronunciation if configured.
+    // iOS audio was unlocked in handleStartRound() (user-gesture), so this works.
     if (config.autoPlayAudio) {
-      if (speechService.isIOSDevice && !speechService.iosAudioUnlocked) {
-        // iOS: can't auto-play until user taps something — the play button below will handle it
-        dbg.warn('iOS audio not unlocked yet — skipping auto-play', currentWord.word);
-      } else {
-        dbg.info('Auto-playing word', currentWord.word);
-        speak(currentWord.word);
-      }
+      dbg.info('Auto-playing word', currentWord.word);
+      speak(currentWord.word);
     }
 
     // Start precision timer
@@ -499,26 +494,13 @@ export const TestingView: React.FC<TestingViewProps> = ({
           );
         })()}
 
-        {/* iOS Play Dialog (shows unlock progress + auto-closes) */}
+        {/* Play Dialog (shows speaking progress + auto-closes) */}
         {playDialogStep !== null && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setPlayDialogStep(null)}>
             <div className="bg-slate-900 border border-slate-700 rounded-2xl px-8 py-6 flex flex-col items-center gap-4 shadow-2xl mx-4 min-w-[240px]"
               onClick={e => e.stopPropagation()}>
-              {playDialogStep === 'unlocking' && (
-                <>
-                  <div className="text-3xl animate-pulse">🔓</div>
-                  <div className="text-sm font-bold text-amber-300">解鎖 iOS 音訊引擎...</div>
-                  <div className="text-xs text-slate-400">iOS 首次播放需要使用者手勢授權</div>
-                  <div className="flex gap-1">
-                    {[0,1,2].map(i => (
-                      <div key={i} className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"
-                        style={{ animationDelay: `${i * 150}ms` }} />
-                    ))}
-                  </div>
-                </>
-              )}
-              {playDialogStep === 'speaking' && (
+              {(playDialogStep === 'unlocking' || playDialogStep === 'speaking') && (
                 <>
                   <div className="text-3xl animate-bounce">🔊</div>
                   <div className="text-sm font-bold text-indigo-300">
@@ -548,22 +530,9 @@ export const TestingView: React.FC<TestingViewProps> = ({
           <button
             onClick={async () => {
               dbg.info('Play button tapped', currentWord.word);
-
-              if (speechService.isIOSDevice) {
-                // Step 1: show unlock dialog + call unlock in user-gesture context
-                setPlayDialogStep('unlocking');
-                speechService.unlockIOSAudio();
-                // brief pause to let unlock utterance start
-                await new Promise(r => setTimeout(r, 400));
-              }
-
-              // Step 2: show speaking dialog
               setPlayDialogStep('speaking');
-              dbg.info('Starting speak()');
               await speak(currentWord.word);
               dbg.ok('speak() resolved');
-
-              // Step 3: done — auto-close dialog and focus input
               setPlayDialogStep('done');
               setTimeout(() => {
                 setPlayDialogStep(null);
