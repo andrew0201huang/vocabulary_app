@@ -236,7 +236,7 @@ export async function lookupWord(word: string): Promise<DictResult> {
   const translation = await translateToZH(clean);
 
   return {
-    translation: translation || `（${clean}）`,
+    translation: translation || '',   // empty = failed, user can fill in manually
     pos,
     phonetic,
     exampleEn,
@@ -275,13 +275,14 @@ export async function lookupMissingWords(
     if (!entry.needsLookup) return entry;
     const looked = resultMap.get(entry.word);
     if (!looked) return entry;
+    const stillMissing = !looked.translation;
     return {
       ...entry,
       translation: looked.translation,
       pos: entry.pos || looked.pos,
       phonetic: entry.phonetic || looked.phonetic,
       exampleEn: entry.exampleEn || looked.exampleEn,
-      needsLookup: false,
+      needsLookup: stillMissing, // keep true if lookup failed (empty translation)
     };
   });
 }

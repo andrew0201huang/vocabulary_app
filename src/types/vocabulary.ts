@@ -35,6 +35,7 @@ export interface RoundConfig {
   wordCount: number;           // Number of words per round (e.g. 5, 10, 20, 50, all)
   filterMode: 'all' | 'due' | 'struggling' | 'new' | 'elementary' | 'junior_high' | 'custom_tag';
   customTag?: string;
+  wordIds?: string[];          // If set, ignore filterMode and use only these word IDs
   inputMode: InputMode;
   autoPlayAudio: boolean;
   showPhoneticHint: boolean;

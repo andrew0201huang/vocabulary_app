@@ -239,8 +239,9 @@ export const App: React.FC = () => {
             }}
             onStartRoundWithFiltered={(filtered) => {
               handleStartRound({
-                wordCount: Math.min(20, filtered.length),
+                wordCount: filtered.length,
                 filterMode: 'all',
+                wordIds: filtered.map(w => w.id),  // pass exact IDs, ignore filterMode
                 inputMode: settings.defaultInputMode || 'keyboard',
                 autoPlayAudio: true,
                 showPhoneticHint: false,
@@ -314,12 +315,13 @@ export const App: React.FC = () => {
           replaceAllWords(newWords);
           setIsBatchAddOpen(false);
           setActiveTab('test');
-          // Start test immediately with all words of this tag
+          // Use wordIds to precisely target the just-imported words
           const taggedWords = newWords.filter(w => w.tags.includes(importedTag));
           handleStartRound({
             wordCount: taggedWords.length || 999,
             filterMode: 'custom_tag',
             customTag: importedTag,
+            wordIds: taggedWords.map(w => w.id),
             inputMode: settings.defaultInputMode || 'keyboard',
             autoPlayAudio: true,
             showPhoneticHint: false,

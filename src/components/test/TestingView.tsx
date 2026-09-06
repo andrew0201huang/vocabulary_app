@@ -77,8 +77,12 @@ export const TestingView: React.FC<TestingViewProps> = ({
   useEffect(() => {
     let candidateWords = [...allWords];
 
-    // Apply filter mode
-    if (config.filterMode === 'due') {
+    // wordIds takes priority — use exactly these words regardless of filterMode
+    if (config.wordIds && config.wordIds.length > 0) {
+      const idSet = new Set(config.wordIds);
+      candidateWords = candidateWords.filter(w => idSet.has(w.id));
+    } else if (config.filterMode === 'due') {
+      // Apply filter mode
       candidateWords = candidateWords.filter(w => {
         if (!w.nextReviewAt) return true;
         return Date.now() >= new Date(w.nextReviewAt).getTime();
