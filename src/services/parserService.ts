@@ -164,56 +164,83 @@ export interface DictResult {
 }
 
 /**
- * Look up an English word via Free Dictionary API + MyMemory translation.
- * Returns basic info. Falls back gracefully on network error.
+ * Translate a single English word to Traditional Chinese.
+ * Tries multiple free services in order until one succeeds.
+ */
+async function translateToZH(word: string): Promise<string> {
+  const encoded = encodeURIComponent(word);
+
+  // 1. MyMemory (single word only, no quota issue)
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encoded}&langpair=en|zh-TW&de=a@b.com`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const t: string = data?.responseData?.translatedText ?? '';
+      // MyMemory returns 'QUERY LENGTH LIMIT EXCEDEED' or the original on failure
+      if (t && t !== word && !t.toUpperCase().includes('LIMIT') && !t.toUpperCase().includes('QUERY')) {
+        return t;
+      }
+    }
+  } catch { /* try next */ }
+
+  // 2. Google Translate unofficial single-word endpoint (no key needed for short queries)
+  try {
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encoded}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const t: string = data?.[0]?.[0]?.[0] ?? '';
+      if (t && t !== word) return t;
+    }
+  } catch { /* try next */ }
+
+  return '';
+}
+
+/**
+ * Look up an English word via Free Dictionary API (phonetic/pos/example) + translation.
+ * Returns basic info. Falls back gracefully on any network error.
  */
 export async function lookupWord(word: string): Promise<DictResult> {
   const clean = word.trim().toLowerCase();
 
+  let pos: string | undefined;
+  let phonetic: string | undefined;
+  let exampleEn: string | undefined;
+
+  // 1. Free Dictionary API — phonetic + pos + example sentence (English only)
   try {
-    // 1. Free Dictionary API — English definition + phonetic + example
-    const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(clean)}`);
-
-    let pos: string | undefined;
-    let phonetic: string | undefined;
-    let exampleEn: string | undefined;
-    let enDef: string | undefined;
-
+    const dictRes = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(clean)}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
     if (dictRes.ok) {
       const data = await dictRes.json();
       const entry = data[0];
       phonetic = entry?.phonetic || entry?.phonetics?.find((p: any) => p.text)?.text;
-      const meanings = entry?.meanings ?? [];
-      const firstMeaning = meanings[0];
+      const firstMeaning = entry?.meanings?.[0];
       if (firstMeaning) {
         pos = firstMeaning.partOfSpeech;
         const firstDef = firstMeaning.definitions?.[0];
-        if (firstDef) {
-          enDef = firstDef.definition;
-          exampleEn = firstDef.example;
-        }
+        if (firstDef) exampleEn = firstDef.example;
       }
     }
+  } catch { /* ignore, proceed to translation */ }
 
-    // 2. MyMemory — translate definition or word to Chinese
-    const textToTranslate = enDef ? `${clean}; ${enDef}` : clean;
-    const transRes = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=en|zh-TW`
-    );
-    let translation = '';
-    if (transRes.ok) {
-      const transData = await transRes.json();
-      translation = transData?.responseData?.translatedText ?? '';
-      // Sometimes MyMemory returns the original text unchanged if it fails
-      if (translation.toLowerCase() === textToTranslate.toLowerCase()) translation = '';
-    }
+  // 2. Translate the word itself (just the word, not definition) → more reliable
+  const translation = await translateToZH(clean);
 
-    if (!translation) translation = `（${clean} 的中文釋義）`;
-
-    return { translation, pos, phonetic, exampleEn };
-  } catch {
-    return { translation: `（查詢失敗 — ${clean}）` };
-  }
+  return {
+    translation: translation || `（${clean}）`,
+    pos,
+    phonetic,
+    exampleEn,
+  };
 }
 
 /**
