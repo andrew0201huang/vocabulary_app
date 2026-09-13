@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openaiApiKey: '',
   googleSpeechApiKey: '',
   voiceSpeechEngine: 'browser',
+  pronunciationSource: 'natural',
   speechRate: 0.95,
   speechPitch: 1.0,
   speechVoiceName: '',

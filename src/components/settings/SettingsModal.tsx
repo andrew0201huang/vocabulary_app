@@ -27,6 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [speechRate, setSpeechRate] = useState(settings.speechRate || 0.95);
   const [speechPitch, setSpeechPitch] = useState(settings.speechPitch || 1.0);
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(settings.soundEffectsEnabled ?? true);
+  const [pronunciationSource, setPronunciationSource] = useState(settings.pronunciationSource ?? 'natural');
   
   // Speed Thresholds in seconds: default 5, 10, 15
   const [lightningSec, setLightningSec] = useState((settings.speedThresholds.lightningMs / 1000).toFixed(1));
@@ -41,7 +42,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showAdvancedAuth, setShowAdvancedAuth] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  const { speak } = useSpeech();
+  const { speak } = useSpeech({
+    ...settings,
+    pronunciationSource,
+    speechRate: Number(speechRate),
+    speechPitch: Number(speechPitch),
+  });
 
   const handleSave = () => {
     const lMs = Math.round(Number(lightningSec) * 1000);
@@ -53,6 +59,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       openaiApiKey: openaiApiKey.trim(),
       googleSpeechApiKey: googleSpeechApiKey.trim(),
       voiceSpeechEngine,
+      pronunciationSource,
       speechRate: Number(speechRate),
       speechPitch: Number(speechPitch),
       soundEffectsEnabled,
@@ -72,7 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleTestSpeech = () => {
-    speak('Welcome to SpeedVocab reaction test.', Number(speechRate), Number(speechPitch));
+    speak('apple', Number(speechRate), Number(speechPitch));
   };
 
   return (
@@ -197,8 +204,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-3">
           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Volume2 className="w-4 h-4 text-indigo-400" />
-            <span>語音合成發音設定 (Speech Synthesis)</span>
+            <span>單字發音與語音設定 (Pronunciation & Audio)</span>
           </label>
+
+          {/* Pronunciation audio source mode */}
+          <div className="flex flex-col gap-1.5 pb-2 border-b border-slate-100">
+            <div className="text-xs text-slate-700 font-semibold">發音音訊來源：</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPronunciationSource('natural')}
+                className="py-2 px-3 rounded-xl text-xs font-semibold border text-left flex flex-col gap-0.5 transition-all"
+                style={pronunciationSource === 'natural' ? {
+                  borderColor: 'var(--accent)',
+                  backgroundColor: 'var(--accent-dim)',
+                  color: 'var(--accent)',
+                } : {
+                  borderColor: 'var(--border)',
+                  backgroundColor: 'var(--surface)',
+                  color: 'var(--text-2)',
+                }}
+              >
+                <span className="font-bold">真人字典發音（推薦）</span>
+                <span className="text-[10px] opacity-80">真人母語錄音，若無音檔自動回退</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPronunciationSource('browser')}
+                className="py-2 px-3 rounded-xl text-xs font-semibold border text-left flex flex-col gap-0.5 transition-all"
+                style={pronunciationSource === 'browser' ? {
+                  borderColor: 'var(--accent)',
+                  backgroundColor: 'var(--accent-dim)',
+                  color: 'var(--accent)',
+                } : {
+                  borderColor: 'var(--border)',
+                  backgroundColor: 'var(--surface)',
+                  color: 'var(--text-2)',
+                }}
+              >
+                <span className="font-bold">裝置合成語音</span>
+                <span className="text-[10px] opacity-80">瀏覽器內建 Web Speech TTS</span>
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

@@ -84,20 +84,114 @@ export class SpeechService {
     return this.voices.filter((v) => v.lang.startsWith('en'));
   }
 
+  // Audio element for playing natural dictionary recordings
+  private naturalAudio: HTMLAudioElement | null = null;
+
   /**
-   * Speak text. On iOS this MUST be called from a user-gesture handler for the
-   * first call after page load (handled by unlockIOSAudio). Subsequent calls
-   * from useEffect also work once unlocked.
+   * Play natural human pronunciation audio for a word.
+   * Returns true if successfully played, false if failed or not available.
    */
-  public speak(
+  private playNaturalAudio(word: string, rate: number = 1.0): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+        resolve(false);
+        return;
+      }
+
+      const cleanWord = word.trim().toLowerCase();
+      // Only single words or simple hyphenated words are suitable for dictionary MP3
+      if (!cleanWord || /\s/.test(cleanWord) || !/^[a-zA-Z-]+$/.test(cleanWord)) {
+        resolve(false);
+        return;
+      }
+
+      this.stopSpeaking();
+
+      // Reliable high-quality human US pronunciation endpoint
+      // Youdao dictionary voice CDN provides clean, authoritative native US English MP3
+      const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanWord)}&type=2`;
+
+      const audio = new Audio();
+      this.naturalAudio = audio;
+      audio.playbackRate = Math.max(0.7, Math.min(1.5, rate));
+
+      let settled = false;
+      const finish = (success: boolean) => {
+        if (!settled) {
+          settled = true;
+          if (this.naturalAudio === audio) {
+            this.naturalAudio = null;
+          }
+          resolve(success);
+        }
+      };
+
+      // Safety timeout in case of network stall
+      const timeoutId = setTimeout(() => {
+        try {
+          audio.pause();
+          audio.src = '';
+        } catch { /* ignore */ }
+        finish(false);
+      }, 3500);
+
+      audio.onended = () => {
+        clearTimeout(timeoutId);
+        dbg.ok(`Natural audio played successfully: "${word}"`);
+        finish(true);
+      };
+
+      audio.onerror = () => {
+        clearTimeout(timeoutId);
+        dbg.warn(`Natural audio failed for "${word}", will fallback to TTS`);
+        finish(false);
+      };
+
+      audio.src = audioUrl;
+      audio.play().catch((err) => {
+        clearTimeout(timeoutId);
+        dbg.warn(`audio.play() error for "${word}":`, err);
+        finish(false);
+      });
+    });
+  }
+
+  /**
+   * Speak text. Supports natural human pronunciation mode with automatic TTS fallback.
+   * On iOS this works smoothly once unlocked.
+   */
+  public async speak(
+    text: string,
+    rate: number = 0.95,
+    pitch: number = 1.0,
+    voiceName?: string,
+    source: 'natural' | 'browser' = 'natural'
+  ): Promise<void> {
+    if (!text) return;
+
+    // 1. If natural mode is requested, attempt high-quality human pronunciation first
+    if (source === 'natural') {
+      const success = await this.playNaturalAudio(text, rate);
+      if (success) {
+        return;
+      }
+      dbg.info(`Falling back to browser speech synthesis for "${text}"`);
+    }
+
+    // 2. Fallback / Browser Web Speech API
+    return this.speakViaSpeechSynthesis(text, rate, pitch, voiceName);
+  }
+
+  /**
+   * Internal Web Speech API synthesis playback
+   */
+  private speakViaSpeechSynthesis(
     text: string,
     rate: number = 0.95,
     pitch: number = 1.0,
     voiceName?: string
   ): Promise<void> {
-    if (!text) return Promise.resolve();
-
-    dbg.info(`speak("${text}")`, { ios: this.isIOSDevice, unlocked: this.iosAudioUnlocked, rate });
+    dbg.info(`speakViaSpeechSynthesis("${text}")`, { ios: this.isIOSDevice, unlocked: this.iosAudioUnlocked, rate });
 
     return new Promise((resolve) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -175,6 +269,13 @@ export class SpeechService {
   }
 
   public stopSpeaking() {
+    if (this.naturalAudio) {
+      try {
+        this.naturalAudio.pause();
+        this.naturalAudio.src = '';
+        this.naturalAudio = null;
+      } catch { /* ignore */ }
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }

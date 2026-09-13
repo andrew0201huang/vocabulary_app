@@ -74,11 +74,14 @@ export interface RoundSummary {
 
 export type VoiceSpeechEngine = 'browser' | 'google' | 'openai';
 
+export type PronunciationSource = 'natural' | 'browser';
+
 export interface AppSettings {
   googleClientId: string;
   openaiApiKey: string;            // OpenAI Whisper API key
   googleSpeechApiKey: string;      // Google Cloud Speech-to-Text API key
   voiceSpeechEngine: VoiceSpeechEngine; // Which offline engine to use ('browser' = legacy)
+  pronunciationSource?: PronunciationSource; // 'natural' = high-quality dictionary human MP3 first; 'browser' = Web Speech TTS only
   speechRate: number;              // 0.5 to 1.5 (default: 0.95)
   speechPitch: number;             // 0.5 to 1.5 (default: 1.0)
   speechVoiceName: string;         // Preferred TTS voice

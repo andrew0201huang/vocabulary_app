@@ -18,8 +18,9 @@ export function useSpeech(settings?: AppSettings) {
     setIsSpeaking(true);
     const rate = customRate ?? settings?.speechRate ?? 0.95;
     const pitch = customPitch ?? settings?.speechPitch ?? 1.0;
+    const source = settings?.pronunciationSource ?? 'natural';
     try {
-      await speechService.speak(word, rate, pitch, settings?.speechVoiceName);
+      await speechService.speak(word, rate, pitch, settings?.speechVoiceName, source);
     } finally {
       setIsSpeaking(false);
     }
