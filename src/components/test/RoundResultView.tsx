@@ -53,17 +53,17 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
           <Trophy className="w-9 h-9" />
         </div>
 
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
           回合測驗完成！
         </h2>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-slate-700">
           所有學習進度與拼寫反應時間已自動計算並同步至本地及雲端。
         </p>
 
         {/* 4 Stat Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-3">
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col items-center">
-            <span className="text-xs text-slate-400 font-medium">準確率</span>
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
+            <span className="text-xs text-slate-500 font-medium">準確率</span>
             <span className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">
               {summary.accuracyRate}%
             </span>
@@ -72,8 +72,8 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col items-center">
-            <span className="text-xs text-slate-400 font-medium">平均反應時間</span>
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
+            <span className="text-xs text-slate-500 font-medium">平均反應時間</span>
             <span className="text-2xl font-extrabold text-indigo-300 font-mono mt-1">
               {formatSeconds(summary.averageTimeMs)}
             </span>
@@ -82,16 +82,16 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col items-center">
-            <span className="text-xs text-slate-400 font-medium">最快反應速度</span>
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
+            <span className="text-xs text-slate-500 font-medium">最快反應速度</span>
             <span className="text-2xl font-extrabold text-amber-400 font-mono mt-1">
               {formatSeconds(summary.fastestTimeMs)}
             </span>
             <span className="text-[10px] text-slate-500">最佳單字紀錄</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col items-center">
-            <span className="text-xs text-slate-400 font-medium">已精通晉升</span>
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
+            <span className="text-xs text-slate-500 font-medium">已精通晉升</span>
             <span className="text-2xl font-extrabold text-cyan-400 font-mono mt-1">
               +{summary.masteredWordIds.length}
             </span>
@@ -101,9 +101,9 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
       </div>
 
       {/* Tested Word Breakdown List */}
-      <div className="p-5 rounded-3xl bg-slate-900/70 border border-slate-800 flex flex-col gap-3 shadow-lg">
+      <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col gap-3 shadow-lg">
         <div className="flex items-center justify-between px-1">
-          <div className="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
             <Flame className="w-4 h-4 text-indigo-400" />
             <span>本次回合單字詳細反應清單 ({summary.results.length})</span>
           </div>
@@ -118,12 +118,12 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
             return (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-colors"
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => speak(res.word)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
                     title="聆聽發音"
                   >
                     <Volume2 className="w-4 h-4" />
@@ -138,7 +138,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400">{res.translation}</div>
+                    <div className="text-xs text-slate-500">{res.translation}</div>
                   </div>
                 </div>
 
@@ -171,7 +171,8 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
         <button
           onClick={onStartNewRound}
-          className="w-full sm:flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/40 transition-all active:scale-[0.98]"
+          className="w-full sm:flex-1 py-3.5 px-4 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] hover:opacity-90" 
+          style={{ backgroundColor: 'var(--accent)' }}
         >
           <Play className="w-4 h-4 fill-current" />
           <span>再來一回合 (New Round)</span>
@@ -179,7 +180,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
         <button
           onClick={onGoToBank}
-          className="w-full sm:w-auto py-3.5 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full sm:w-auto py-3.5 px-5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold flex items-center justify-center gap-2 transition-all"
         >
           <BookOpen className="w-4 h-4" />
           <span>返回題庫</span>

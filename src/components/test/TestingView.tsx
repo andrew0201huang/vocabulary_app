@@ -390,7 +390,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
   if (!currentWord) {
     return (
-      <div className="flex items-center justify-center p-12 text-slate-400">
+      <div className="flex items-center justify-center p-12 text-slate-500">
         正在準備測驗題目...
       </div>
     );
@@ -405,7 +405,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
       <div className="flex items-center justify-between gap-4">
         <button
           onClick={onExit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-900 text-xs font-semibold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>退出回合</span>
@@ -420,8 +420,8 @@ export const TestingView: React.FC<TestingViewProps> = ({
             </span>
           )}
 
-          <div className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300">
-            第 <span className="text-indigo-400 font-mono text-sm">{currentIndex + 1}</span> / {queue.length} 題
+          <div className="px-3 py-1 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700">
+            第 <span className="text-indigo-600 font-mono text-sm">{currentIndex + 1}</span> / {queue.length} 題
             {queue.length > totalInitialCount && (
               <span className="text-amber-400/90 text-[11px] ml-1.5">
                 (含複習 +{queue.length - totalInitialCount})
@@ -440,7 +440,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
       </div>
 
       {/* Speed Gauge & Stopwatch */}
-      <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-lg">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-lg">
         <SpeedGauge elapsedMs={elapsedMs} settings={settings} />
       </div>
 
@@ -449,12 +449,12 @@ export const TestingView: React.FC<TestingViewProps> = ({
         {/* Category Tags */}
         <div className="flex flex-wrap items-center justify-center gap-1.5">
           {currentWord.pos && (
-            <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-xs font-mono font-semibold">
+            <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-600 text-xs font-mono font-semibold">
               {currentWord.pos}
             </span>
           )}
           {(currentWord.tags || []).slice(0, 2).map((tag, idx) => (
-            <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs">
+            <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-xs">
               {tag}
             </span>
           ))}
@@ -476,20 +476,20 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
           return (
             <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-center gap-1.5 my-1 w-full max-w-sm">
-              <div className="flex items-center gap-2 text-indigo-300 font-bold text-sm">
+              <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm">
                 <Headphones className="w-4 h-4 text-cyan-400 animate-pulse" />
                 <span>聽音拼寫挑戰中...</span>
-                <span className="font-mono bg-indigo-900/80 px-2 py-0.5 rounded-lg border border-indigo-400/40 text-indigo-200 text-xs">
+                <span className="font-mono bg-indigo-900/80 px-2 py-0.5 rounded-lg border border-indigo-400/40 text-indigo-700 text-xs">
                   {delayRemainingSec}s
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-slate-500">
                 前 {chineseDelaySec} 秒聽音拼寫，倒數結束後自動顯示中文釋義
               </div>
               <button
                 type="button"
                 onClick={() => setForceShowChinese(true)}
-                className="text-[11px] text-slate-400 hover:text-indigo-300 underline mt-0.5 flex items-center gap-1 transition-colors"
+                className="text-[11px] text-slate-500 hover:text-indigo-600 underline mt-0.5 flex items-center gap-1 transition-colors"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>提前顯示中文釋義</span>
@@ -502,13 +502,13 @@ export const TestingView: React.FC<TestingViewProps> = ({
         {playDialogStep !== null && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setPlayDialogStep(null)}>
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl px-8 py-6 flex flex-col items-center gap-4 shadow-2xl mx-4 min-w-[240px]"
+            <div className="bg-white border border-slate-300 rounded-2xl px-8 py-6 flex flex-col items-center gap-4 shadow-2xl mx-4 min-w-[240px]"
               onClick={e => e.stopPropagation()}>
               {(playDialogStep === 'unlocking' || playDialogStep === 'speaking') && (
                 <>
-                  <Volume2 className="w-8 h-8 text-indigo-400 animate-pulse" />
-                  <div className="text-sm font-bold text-indigo-300">
-                    播放：<span className="text-white font-mono text-lg">{currentWord.word}</span>
+                  <Volume2 className="w-8 h-8 text-indigo-600 animate-pulse" />
+                  <div className="text-sm font-bold text-indigo-600">
+                    播放：<span className="text-slate-900 font-mono text-lg">{currentWord.word}</span>
                   </div>
                   <div className="flex gap-0.5 items-center h-6">
                     {[4,7,5,8,3,6,4].map((h, i) => (
@@ -544,17 +544,17 @@ export const TestingView: React.FC<TestingViewProps> = ({
               }, 600);
             }}
             disabled={isSpeaking}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-bold transition-all transform active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 hover:text-indigo-900 text-xs font-bold transition-all transform active:scale-95"
             title="播放發音 (快速鍵：空白鍵)"
           >
-            <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-bounce text-indigo-400' : ''}`} />
+            <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-bounce text-indigo-600' : ''}`} />
             <span>{isSpeaking ? '播放中...' : '聆聽發音 (Space)'}</span>
           </button>
         </div>
 
         {/* Phonetic Hint / Example Prompt */}
         {config.showPhoneticHint && currentWord.phonetic && (
-          <div className="text-xs font-mono text-slate-400 bg-slate-800/50 px-3 py-1 rounded-lg">
+          <div className="text-xs font-mono text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">
             音標：{currentWord.phonetic}
           </div>
         )}
@@ -570,21 +570,21 @@ export const TestingView: React.FC<TestingViewProps> = ({
           <div
             className={`absolute inset-0 rounded-3xl backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 animate-pop ${
               feedback.isCorrect
-                ? 'bg-slate-950/90 border-2 border-emerald-500/50'
-                : 'bg-slate-950/90 border-2 border-rose-500/50'
+                ? 'bg-white border-2 border-emerald-500/50'
+                : 'bg-white border-2 border-rose-500/50'
             }`}
           >
             {feedback.isCorrect ? (
               <div className="flex flex-col items-center gap-2 text-center">
                 <CheckCircle2 className="w-14 h-14 text-emerald-400 animate-bounce" />
-                <span className="text-3xl font-extrabold text-white font-mono tracking-wider">
+                <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-wider">
                   {feedback.targetWord}
                 </span>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-sm">
                     {feedback.speedLabel}
                   </span>
-                  <span className="text-slate-300 font-mono text-sm">
+                  <span className="text-slate-700 font-mono text-sm">
                     {(feedback.timeMs / 1000).toFixed(2)} 秒
                   </span>
                 </div>
@@ -599,10 +599,10 @@ export const TestingView: React.FC<TestingViewProps> = ({
               <div className="flex flex-col items-center gap-2 text-center">
                 <XCircle className="w-14 h-14 text-rose-400 animate-shake" />
                 <div className="text-xs font-semibold text-rose-300">拼寫錯誤 / 放棄</div>
-                <div className="text-3xl font-extrabold text-white font-mono tracking-wider mt-1">
+                <div className="text-3xl font-extrabold text-slate-900 font-mono tracking-wider mt-1">
                   {feedback.targetWord}
                 </div>
-                <div className="text-sm text-slate-400">{feedback.translation}</div>
+                <div className="text-sm text-slate-500">{feedback.translation}</div>
                 <span className="text-xs text-rose-300/90 bg-rose-500/20 px-3 py-1 rounded-full border border-rose-500/30 mt-2 flex items-center gap-1">
                   <RotateCcw className="w-3.5 h-3.5" />
                   已自動加入本回合複習池！
@@ -665,7 +665,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
         <button
           onClick={() => setShowHint(true)}
           disabled={showHint || feedback?.show}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-amber-300 disabled:opacity-30 transition-colors"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-amber-300 disabled:opacity-30 transition-colors"
           title="顯示提示 (Ctrl+H)"
         >
           <HelpCircle className="w-4 h-4" />
@@ -675,7 +675,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
         <button
           onClick={handleSkip}
           disabled={feedback?.show}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-rose-300 transition-colors"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-rose-300 transition-colors"
           title="放棄這題，加入複習池 (Esc)"
         >
           <SkipForward className="w-4 h-4" />
