@@ -17,34 +17,34 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     switch (status) {
       case 'synced':
         return {
-          icon: <CloudCheck className="w-4 h-4 text-emerald-400" />,
+          icon: <CloudCheck className="w-4 h-4 text-emerald-600" />,
           label: 'Google Drive 已同步',
-          bg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20',
+          bg: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100',
         };
       case 'syncing':
         return {
-          icon: <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />,
+          icon: <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />,
           label: '同步雲端中...',
-          bg: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300',
+          bg: 'bg-indigo-50 border-indigo-200 text-indigo-700',
         };
       case 'offline':
         return {
-          icon: <CloudOff className="w-4 h-4 text-amber-400" />,
+          icon: <CloudOff className="w-4 h-4 text-amber-500" />,
           label: '離線快取中',
-          bg: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
+          bg: 'bg-amber-50 border-amber-200 text-amber-700',
         };
       case 'error':
         return {
-          icon: <AlertTriangle className="w-4 h-4 text-rose-400" />,
+          icon: <AlertTriangle className="w-4 h-4 text-rose-500" />,
           label: '同步異常 (重試)',
-          bg: 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:bg-rose-500/20',
+          bg: 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100',
         };
       case 'local_only':
       default:
         return {
-          icon: <Cloud className="w-4 h-4 text-slate-400" />,
+          icon: <Cloud className="w-4 h-4 text-slate-500" />,
           label: '本機模式 (未登入)',
-          bg: 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700/80',
+          bg: 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100',
         };
     }
   };

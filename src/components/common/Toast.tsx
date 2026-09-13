@@ -33,15 +33,15 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
   }, [toast, onDismiss]);
 
   const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />,
-    error: <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />,
-    info: <Info className="w-5 h-5 text-indigo-400 shrink-0" />,
+    success: <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />,
+    error: <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />,
+    info: <Info className="w-5 h-5 text-indigo-600 shrink-0" />,
   };
 
   const borderColors = {
-    success: 'border-emerald-500/30 bg-slate-900/95',
-    error: 'border-rose-500/30 bg-slate-900/95',
-    info: 'border-indigo-500/30 bg-slate-900/95',
+    success: 'border-emerald-200 bg-white shadow-lg',
+    error: 'border-rose-200 bg-white shadow-lg',
+    info: 'border-indigo-200 bg-white shadow-lg',
   };
 
   return (
@@ -50,12 +50,12 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
     >
       {icons[toast.type]}
       <div className="flex-1 text-sm">
-        <div className="font-semibold text-slate-100">{toast.title}</div>
-        {toast.description && <div className="text-slate-400 text-xs mt-0.5">{toast.description}</div>}
+        <div className="font-semibold text-slate-900">{toast.title}</div>
+        {toast.description && <div className="text-slate-500 text-xs mt-0.5">{toast.description}</div>}
       </div>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-slate-400 hover:text-slate-200 p-1 -mr-1 -mt-1 rounded transition-colors"
+        className="text-slate-500 hover:text-slate-800 p-1 -mr-1 -mt-1 rounded transition-colors"
       >
         <X className="w-4 h-4" />
       </button>

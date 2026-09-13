@@ -63,7 +63,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
       onClose={onClose}
       title={
         <div className="flex items-center gap-2">
-          <User className="w-5 h-5 text-indigo-400" />
+          <User className="w-5 h-5 text-indigo-600" />
           <span>使用者登入與帳號設定</span>
         </div>
       }
@@ -71,14 +71,14 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
     >
       <div className="flex flex-col gap-5">
         {/* Switch Tab */}
-        <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-50 border border-slate-200">
           <button
             type="button"
             onClick={() => setActiveTab('local')}
             className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'local'
                 ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <User className="w-4 h-4" />
@@ -91,7 +91,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
             className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'google'
                 ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <Cloud className="w-4 h-4" />
@@ -102,11 +102,11 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
         {/* Tab 1: Local User */}
         {activeTab === 'local' && (
           <form onSubmit={handleSaveLocalUser} className="flex flex-col gap-4">
-            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-xs text-slate-300 flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-xs text-slate-700 flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-emerald-300">免任何設定、即開即用：</span>
-                <p className="mt-0.5 text-slate-300 text-[11px] leading-relaxed">
+                <span className="font-bold text-emerald-700">免任何設定、即開即用：</span>
+                <p className="mt-0.5 text-slate-700 text-[11px] leading-relaxed">
                   所有單字進度與反應時間均自動保存在您的瀏覽器中，支援完全離線使用、PWA 桌面安裝與 JSON/CSV 資料備份匯出！
                 </p>
               </div>
@@ -114,7 +114,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
 
             {/* Select Avatar */}
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-2">
+              <label className="text-xs font-bold text-slate-500 block mb-2">
                 選擇個人頭像：
               </label>
               <div className="flex flex-wrap gap-2">
@@ -126,7 +126,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                     className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center border transition-all ${
                       selectedAvatar === emoji
                         ? 'border-indigo-500 bg-indigo-950/60 ring-2 ring-indigo-500/30 scale-105'
-                        : 'border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300'
+                        : 'border-slate-200 bg-slate-900/60 hover:bg-slate-100 text-slate-700'
                     }`}
                   >
                     {emoji}
@@ -137,7 +137,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
 
             {/* Enter Nickname */}
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">
+              <label className="text-xs font-bold text-slate-500 block mb-1">
                 學習者暱稱 (Nickname)：
               </label>
               <input
@@ -145,7 +145,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder="例如：Alex、小明、單字達人"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
 
@@ -153,7 +153,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 取消
               </button>
@@ -171,25 +171,25 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
         {/* Tab 2: Google Drive OAuth */}
         {activeTab === 'google' && (
           <div className="flex flex-col gap-4">
-            <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-slate-300 flex flex-col gap-1.5">
-              <div className="font-bold text-indigo-300 flex items-center gap-1.5">
+            <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-500/30 text-xs text-slate-700 flex flex-col gap-1.5">
+              <div className="font-bold text-indigo-700 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4" />
                 <span>Google 雲端同步原理：</span>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-[11px] text-slate-700 leading-relaxed">
                 使用者只要登入自己的 Google 帳號，進度即會自動同步至您個人的 Google Drive 隱藏資料夾（<code>appDataFolder</code>），不需額外伺服器。
               </p>
             </div>
 
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-600 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {authState.authType === 'google' && authState.user ? (
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {authState.user.avatar.startsWith('http') ? (
                     <img src={authState.user.avatar} alt="avatar" className="w-10 h-10 rounded-full" />
@@ -197,12 +197,12 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                     <span className="text-2xl">{authState.user.avatar}</span>
                   )}
                   <div>
-                    <div className="text-sm font-bold text-slate-100">{authState.user.name}</div>
-                    <div className="text-xs text-slate-400">{authState.user.email || '已連結 Google 雲端'}</div>
+                    <div className="text-sm font-bold text-slate-900">{authState.user.name}</div>
+                    <div className="text-xs text-slate-500">{authState.user.email || '已連結 Google 雲端'}</div>
                   </div>
                 </div>
 
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-500/30 font-bold">
                   已同步
                 </span>
               </div>
@@ -222,7 +222,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 ) : (
                   <div className="flex flex-col gap-3">
                     <div>
-                      <label className="text-xs font-bold text-slate-400 block mb-1">
+                      <label className="text-xs font-bold text-slate-500 block mb-1">
                         網站 Google Client ID：
                       </label>
                       <input
@@ -230,7 +230,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                         value={manualClientId}
                         onChange={(e) => setManualClientId(e.target.value)}
                         placeholder="例如：xxxx.apps.googleusercontent.com"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
@@ -251,7 +251,7 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                           onClose();
                           onOpenSettings();
                         }}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center justify-center gap-1 mx-auto"
+                        className="text-xs text-indigo-600 hover:text-indigo-700 underline flex items-center justify-center gap-1 mx-auto"
                       >
                         <ExternalLink className="w-3 h-3" />
                         <span>查看如何取得網站的 Google Client ID</span>
