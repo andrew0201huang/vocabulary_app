@@ -167,10 +167,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Headphones className="w-4 h-4 text-cyan-400" />
+              <Headphones className="w-4 h-4 text-cyan-600" />
               <span>聽音優先：延遲顯示中文釋義時間（以生疏門檻為準）</span>
             </label>
-            <span className="text-xs font-mono text-cyan-300 font-bold">
+            <span className="text-xs font-mono text-cyan-600 font-bold">
               {chineseDelaySeconds === 0 ? '即時顯示' : `${chineseDelaySeconds} 秒`}
             </span>
           </div>
@@ -190,8 +190,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => setChineseDelaySeconds(sec)}
                 className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
                   chineseDelaySeconds === sec
-                    ? 'border-cyan-500 bg-cyan-950/50 text-cyan-200 shadow-md ring-1 ring-cyan-500/30'
-                    : 'border-slate-800 bg-slate-900/60 text-slate-500 hover:text-slate-900'
+                    ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-500/30'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 {label}

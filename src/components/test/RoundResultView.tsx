@@ -45,11 +45,11 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-6 px-4 py-6 animate-fade-in">
       {/* Header Banner */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-indigo-900/40 via-slate-900 to-slate-950 border border-indigo-500/30 text-center flex flex-col items-center gap-3 shadow-2xl relative overflow-hidden">
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-indigo-100 text-center flex flex-col items-center gap-3 shadow-2xl relative overflow-hidden">
         {/* Glow effect */}
-        <div className="absolute -top-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 w-48 h-48 bg-indigo-200/50 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-16 h-16 rounded-2xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-amber-300 shadow-xl shadow-indigo-950/50">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-amber-500 shadow-md">
           <Trophy className="w-9 h-9" />
         </div>
 
@@ -64,7 +64,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-3">
           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
             <span className="text-xs text-slate-500 font-medium">準確率</span>
-            <span className="text-2xl font-extrabold text-emerald-400 font-mono mt-1">
+            <span className="text-2xl font-extrabold text-emerald-600 font-mono mt-1">
               {summary.accuracyRate}%
             </span>
             <span className="text-[10px] text-slate-500">
@@ -74,7 +74,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
             <span className="text-xs text-slate-500 font-medium">平均反應時間</span>
-            <span className="text-2xl font-extrabold text-indigo-300 font-mono mt-1">
+            <span className="text-2xl font-extrabold text-indigo-600 font-mono mt-1">
               {formatSeconds(summary.averageTimeMs)}
             </span>
             <span className="text-[10px] text-slate-500">
@@ -84,7 +84,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
             <span className="text-xs text-slate-500 font-medium">最快反應速度</span>
-            <span className="text-2xl font-extrabold text-amber-400 font-mono mt-1">
+            <span className="text-2xl font-extrabold text-amber-500 font-mono mt-1">
               {formatSeconds(summary.fastestTimeMs)}
             </span>
             <span className="text-[10px] text-slate-500">最佳單字紀錄</span>
@@ -92,7 +92,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center">
             <span className="text-xs text-slate-500 font-medium">已精通晉升</span>
-            <span className="text-2xl font-extrabold text-cyan-400 font-mono mt-1">
+            <span className="text-2xl font-extrabold text-cyan-600 font-mono mt-1">
               +{summary.masteredWordIds.length}
             </span>
             <span className="text-[10px] text-slate-500">晉升為精通單字</span>
@@ -104,7 +104,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
       <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col gap-3 shadow-lg">
         <div className="flex items-center justify-between px-1">
           <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Flame className="w-4 h-4 text-indigo-400" />
+            <Flame className="w-4 h-4 text-indigo-500" />
             <span>本次回合單字詳細反應清單 ({summary.results.length})</span>
           </div>
           <span className="text-xs text-slate-500">點擊單字可重聽發音</span>
@@ -131,9 +131,9 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-100 font-mono">{res.word}</span>
+                      <span className="font-bold text-slate-900 font-mono">{res.word}</span>
                       {res.isRetry && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold">
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-600 font-semibold">
                           複習
                         </span>
                       )}
@@ -162,7 +162,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
         {hasStrugglingWords && (
           <button
             onClick={() => onRetryStruggling(summary.strugglingWordIds)}
-            className="w-full sm:flex-1 py-3.5 px-4 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-200 font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            className="w-full sm:flex-1 py-3.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
             <RotateCcw className="w-4 h-4" />
             <span>複習本回生疏單字 ({summary.strugglingWordIds.length})</span>
