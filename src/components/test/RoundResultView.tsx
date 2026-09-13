@@ -78,7 +78,7 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
               {formatSeconds(summary.averageTimeMs)}
             </span>
             <span className="text-[10px] text-slate-500">
-              {summary.averageTimeMs < 2000 ? '⚡ 極速反應' : '穩定進步中'}
+              {summary.averageTimeMs < 2000 ? '極速反應' : '穩定進步中'}
             </span>
           </div>
 

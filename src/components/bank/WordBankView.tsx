@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, ClipboardPaste, BookMarked, Volume2, Edit2, Trash2, RotateCcw, Filter, Sparkles } from 'lucide-react';
+import { Search, Plus, ClipboardPaste, BookMarked, Volume2, Edit2, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { WordItem, FamiliarityLevel, AppSettings } from '../../types/vocabulary';
 import { getFamiliarityBadge } from '../../utils/textUtils';
 import { formatSeconds } from '../../utils/timeUtils';
@@ -18,6 +18,24 @@ interface WordBankViewProps {
   onResetWordProgress: (id: string) => void;
   onStartRoundWithFiltered: (filteredWords: WordItem[]) => void;
 }
+
+const FAMILIARITY_TABS: { key: FamiliarityLevel | 'all' | 'due'; label: string }[] = [
+  { key: 'all',        label: '全部' },
+  { key: 'due',        label: '待複習' },
+  { key: 'mastered',   label: '精通' },
+  { key: 'familiar',   label: '熟練' },
+  { key: 'learning',   label: '學習中' },
+  { key: 'struggling', label: '生疏' },
+  { key: 'new',        label: '新單字' },
+];
+
+const familiarity_style: Record<string, { color: string; bg: string }> = {
+  mastered:   { color: 'var(--amber)', bg: 'var(--amber-dim)' },
+  familiar:   { color: 'var(--accent)', bg: 'var(--accent-dim)' },
+  learning:   { color: 'var(--text-2)', bg: 'var(--surface-2)' },
+  struggling: { color: 'var(--red)', bg: 'var(--red-dim)' },
+  new:        { color: 'var(--green)', bg: 'var(--green-dim)' },
+};
 
 export const WordBankView: React.FC<WordBankViewProps> = ({
   words,
@@ -38,324 +56,314 @@ export const WordBankView: React.FC<WordBankViewProps> = ({
 
   const { speak } = useSpeech(settings);
 
-  // Filter and Sort words
   const filteredWords = useMemo(() => {
     return words.filter(word => {
-      // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesWord = word.word.toLowerCase().includes(q);
-        const matchesTranslation = word.translation.toLowerCase().includes(q);
-        const matchesTag = (word.tags || []).some(t => t.toLowerCase().includes(q));
-        if (!matchesWord && !matchesTranslation && !matchesTag) return false;
+        if (
+          !word.word.toLowerCase().includes(q) &&
+          !word.translation.toLowerCase().includes(q) &&
+          !(word.tags || []).some(t => t.toLowerCase().includes(q))
+        ) return false;
       }
-
-      // Familiarity / Due filter
       if (selectedFamiliarity === 'due') {
         if (!isWordDueForReview(word)) return false;
       } else if (selectedFamiliarity !== 'all') {
         if (word.familiarity !== selectedFamiliarity) return false;
       }
-
-      // Tag filter
       if (selectedTag !== 'all') {
         if (!word.tags.includes(selectedTag)) return false;
       }
-
       return true;
     }).sort((a, b) => {
-      if (sortBy === 'alpha') {
-        return a.word.localeCompare(b.word);
-      }
-      if (sortBy === 'speed_fast') {
-        return (a.bestTimeMs || 999999) - (b.bestTimeMs || 999999);
-      }
-      if (sortBy === 'speed_slow') {
-        return (b.averageTimeMs || 0) - (a.averageTimeMs || 0);
-      }
-      if (sortBy === 'streak') {
-        return (b.consecutiveCorrect || 0) - (a.consecutiveCorrect || 0);
-      }
+      if (sortBy === 'alpha')       return a.word.localeCompare(b.word);
+      if (sortBy === 'speed_fast')  return (a.bestTimeMs || 999999) - (b.bestTimeMs || 999999);
+      if (sortBy === 'speed_slow')  return (b.averageTimeMs || 0) - (a.averageTimeMs || 0);
+      if (sortBy === 'streak')      return (b.consecutiveCorrect || 0) - (a.consecutiveCorrect || 0);
       if (sortBy === 'due') {
-        const timeA = a.nextReviewAt ? new Date(a.nextReviewAt).getTime() : 0;
-        const timeB = b.nextReviewAt ? new Date(b.nextReviewAt).getTime() : 0;
-        return timeA - timeB;
+        const tA = a.nextReviewAt ? new Date(a.nextReviewAt).getTime() : 0;
+        const tB = b.nextReviewAt ? new Date(b.nextReviewAt).getTime() : 0;
+        return tA - tB;
       }
       return 0;
     });
   }, [words, searchQuery, selectedFamiliarity, selectedTag, sortBy]);
 
+  const tabCounts = useMemo(() => ({
+    all:        words.length,
+    due:        words.filter(isWordDueForReview).length,
+    mastered:   words.filter(w => w.familiarity === 'mastered').length,
+    familiar:   words.filter(w => w.familiarity === 'familiar').length,
+    learning:   words.filter(w => w.familiarity === 'learning').length,
+    struggling: words.filter(w => w.familiarity === 'struggling').length,
+    new:        words.filter(w => w.familiarity === 'new').length,
+  }), [words]);
+
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col gap-5 px-4 py-6">
-      {/* Top Action Bar */}
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-5 px-4 py-6">
+
+      {/* Top bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-            <span>單字庫管理</span>
-            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-indigo-600/30 border border-indigo-500/40 text-indigo-300">
-              共 {words.length} 字
+          <h1 className="text-lg font-bold" style={{ color: 'var(--text-1)', letterSpacing: '-0.02em' }}>
+            單字庫
+            <span className="ml-2 text-sm font-normal" style={{ color: 'var(--text-3)' }}>
+              {words.length} 字
             </span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            精準記錄拼寫反應時間、連續答對次數與艾賓浩斯複習曲線
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={onAddWord}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-950/40 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-[.97]"
+            style={{ background: 'var(--accent)', color: '#fff' }}
           >
             <Plus className="w-4 h-4" />
-            <span>單筆新增</span>
+            新增
           </button>
-
           <button
             onClick={onBatchAdd}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: 'var(--surface)',
+              color: 'var(--text-1)',
+              border: '1px solid var(--border)',
+            }}
           >
-            <ClipboardPaste className="w-4 h-4 text-indigo-400" />
-            <span>Excel 批次貼上</span>
+            <ClipboardPaste className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            批次貼上
           </button>
-
           <button
             onClick={onImportExport}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: 'var(--surface)',
+              color: 'var(--text-1)',
+              border: '1px solid var(--border)',
+            }}
           >
-            <BookMarked className="w-4 h-4 text-emerald-400" />
-            <span>匯入/匯出題庫</span>
+            <BookMarked className="w-4 h-4" style={{ color: 'var(--green)' }} />
+            匯入/匯出
           </button>
         </div>
       </div>
 
-      {/* Filter and Search Toolbar */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col gap-3 shadow-md">
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-          {/* Search Box */}
-          <div className="sm:col-span-6 relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Filters */}
+      <div
+        className="p-4 rounded-xl flex flex-col gap-3"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-3)' }} />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜尋英文單字、中文釋義或標籤..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="搜尋單字、釋義或標籤"
+              className="w-full pl-9 pr-4 py-2 rounded-lg text-sm"
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
+              }}
             />
           </div>
 
-          {/* Tag Dropdown */}
-          <div className="sm:col-span-3">
-            <select
-              value={selectedTag}
-              onChange={(e) => setSelectedTag(e.target.value)}
-              className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
-            >
-              <option value="all">所有標籤分類 ({allTags.length})</option>
-              {allTags.map(tag => (
-                <option key={tag} value={tag}>{tag}</option>
-              ))}
-            </select>
-          </div>
+          {/* Tag */}
+          <select
+            value={selectedTag}
+            onChange={e => setSelectedTag(e.target.value)}
+            className="py-2 px-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-1)',
+            }}
+          >
+            <option value="all">所有標籤</option>
+            {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+          </select>
 
-          {/* Sort Dropdown */}
-          <div className="sm:col-span-3">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
-            >
-              <option value="alpha">依單字字母 A → Z</option>
-              <option value="speed_fast">依最佳反應時間 (極速優先)</option>
-              <option value="speed_slow">依平均反應時間 (生疏優先)</option>
-              <option value="streak">依連續正確次數</option>
-              <option value="due">依複習到期時間</option>
-            </select>
-          </div>
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            className="py-2 px-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-1)',
+            }}
+          >
+            <option value="alpha">字母 A→Z</option>
+            <option value="speed_fast">最佳時間</option>
+            <option value="speed_slow">平均時間（慢優先）</option>
+            <option value="streak">連續正確</option>
+            <option value="due">複習到期</option>
+          </select>
         </div>
 
-        {/* Familiarity Level Status Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/60">
-          {[
-            { key: 'all', label: '全部', count: words.length },
-            { key: 'due', label: '📅 待複習', count: words.filter(isWordDueForReview).length },
-            { key: 'mastered', label: '⚡ 精通', count: words.filter(w => w.familiarity === 'mastered').length },
-            { key: 'familiar', label: '✨ 熟練', count: words.filter(w => w.familiarity === 'familiar').length },
-            { key: 'learning', label: '⏳ 學習中', count: words.filter(w => w.familiarity === 'learning').length },
-            { key: 'struggling', label: '⚠️ 生疏', count: words.filter(w => w.familiarity === 'struggling').length },
-            { key: 'new', label: '🌱 新單字', count: words.filter(w => w.familiarity === 'new').length },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedFamiliarity(tab.key as any)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                selectedFamiliarity === tab.key
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-950 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {tab.label} <span className="opacity-75 font-mono">({tab.count})</span>
-            </button>
-          ))}
+        {/* Familiarity tabs */}
+        <div className="flex flex-wrap gap-1.5 pt-2" style={{ borderTop: '1px solid var(--border-soft)' }}>
+          {FAMILIARITY_TABS.map(tab => {
+            const isActive = selectedFamiliarity === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedFamiliarity(tab.key as typeof selectedFamiliarity)}
+                className="px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
+                style={{
+                  background: isActive ? 'var(--accent)' : 'var(--bg)',
+                  color: isActive ? '#fff' : 'var(--text-2)',
+                  border: '1px solid ' + (isActive ? 'var(--accent)' : 'var(--border)'),
+                }}
+              >
+                {tab.label}
+                <span className="ml-1 opacity-60">{tabCounts[tab.key]}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Quick Start Round button for filtered selection */}
+      {/* Result meta + start round */}
       {filteredWords.length > 0 && (
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-slate-400">
-            符合條件單字：<strong className="text-indigo-400 font-mono">{filteredWords.length}</strong> 個
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>
+            {filteredWords.length} 個結果
           </span>
-
           <button
             onClick={() => onStartRoundWithFiltered(filteredWords)}
-            className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1"
+            className="flex items-center gap-1 text-xs font-medium transition-colors"
+            style={{ color: 'var(--accent)' }}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>以此篩選結果開始測驗回合 →</span>
+            以此結果開始測驗
           </button>
         </div>
       )}
 
-      {/* Words Grid / List */}
+      {/* Words list */}
       {filteredWords.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400 flex flex-col items-center gap-3">
-          <Filter className="w-8 h-8 text-slate-600" />
-          <span>沒有符合條件的單字</span>
+        <div
+          className="py-16 text-center rounded-xl"
+          style={{ border: '1px dashed var(--border)', color: 'var(--text-3)' }}
+        >
+          <p className="text-sm">沒有符合條件的單字</p>
           <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedFamiliarity('all');
-              setSelectedTag('all');
-            }}
-            className="text-xs text-indigo-400 underline"
+            onClick={() => { setSearchQuery(''); setSelectedFamiliarity('all'); setSelectedTag('all'); }}
+            className="mt-2 text-xs underline"
+            style={{ color: 'var(--accent)' }}
           >
             重設搜尋條件
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredWords.map((word) => {
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{ border: '1px solid var(--border)' }}
+        >
+          {filteredWords.map((word, index) => {
             const badge = getFamiliarityBadge(word.familiarity);
+            const style = familiarity_style[word.familiarity] || { color: 'var(--text-2)', bg: 'var(--surface-2)' };
+            const isLast = index === filteredWords.length - 1;
 
             return (
               <div
                 key={word.id}
-                className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between gap-3 shadow-md group"
+                className="flex items-center gap-3 px-4 py-3 group transition-colors"
+                style={{
+                  background: 'var(--surface)',
+                  borderBottom: isLast ? 'none' : '1px solid var(--border-soft)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
               >
-                {/* Header: Word & Audio */}
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => speak(word.word)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-400 transition-colors"
-                        title="聆聽發音"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </button>
+                {/* Audio */}
+                <button
+                  onClick={() => speak(word.word)}
+                  className="shrink-0 p-1.5 rounded-lg transition-colors"
+                  style={{ color: 'var(--text-3)' }}
+                  title="聆聽發音"
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                >
+                  <Volume2 className="w-4 h-4" />
+                </button>
 
-                      <div>
-                        <span className="font-extrabold text-base sm:text-lg text-slate-100 font-mono tracking-tight">
-                          {word.word}
-                        </span>
-                        {word.pos && (
-                          <span className="text-xs font-mono text-indigo-400 ml-1.5">
-                            {word.pos}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${badge.bgColor} ${badge.textColor} ${badge.borderColor}`}
-                    >
-                      {badge.label}
+                {/* Word + translation */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                      {word.word}
                     </span>
+                    {word.pos && (
+                      <span className="text-xs" style={{ color: 'var(--text-3)' }}>{word.pos}</span>
+                    )}
+                    {word.phonetic && (
+                      <span className="text-xs" style={{ color: 'var(--text-3)' }}>{word.phonetic}</span>
+                    )}
                   </div>
-
-                  {/* Translation & Phonetic */}
-                  <div className="text-sm font-semibold text-slate-200 mt-2">
+                  <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-2)' }}>
                     {word.translation}
                   </div>
-
-                  {word.phonetic && (
-                    <div className="text-xs font-mono text-slate-400 mt-0.5">
-                      {word.phonetic}
-                    </div>
-                  )}
-
-                  {word.exampleEn && (
-                    <div className="text-xs text-slate-400/90 italic mt-1.5 border-l-2 border-slate-700 pl-2">
-                      "{word.exampleEn}"
-                    </div>
-                  )}
                 </div>
 
-                {/* Performance Metrics Footer */}
-                <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
-                  <div className="grid grid-cols-3 gap-1 text-center">
-                    <div className="p-1.5 rounded-lg bg-slate-950/60">
-                      <span className="text-[10px] text-slate-500 block">最佳耗時</span>
-                      <span className="text-xs font-mono font-bold text-amber-400">
-                        {formatSeconds(word.bestTimeMs)}
-                      </span>
-                    </div>
-
-                    <div className="p-1.5 rounded-lg bg-slate-950/60">
-                      <span className="text-[10px] text-slate-500 block">平均耗時</span>
-                      <span className="text-xs font-mono font-bold text-indigo-300">
-                        {formatSeconds(word.averageTimeMs)}
-                      </span>
-                    </div>
-
-                    <div className="p-1.5 rounded-lg bg-slate-950/60">
-                      <span className="text-[10px] text-slate-500 block">連對次數</span>
-                      <span className="text-xs font-mono font-bold text-emerald-400">
-                        {word.consecutiveCorrect} 次
-                      </span>
-                    </div>
+                {/* Performance */}
+                <div className="hidden sm:flex items-center gap-4 shrink-0 text-xs">
+                  <div className="text-right">
+                    <div style={{ color: 'var(--amber)' }}>{formatSeconds(word.bestTimeMs)}</div>
+                    <div style={{ color: 'var(--text-3)' }}>最佳</div>
                   </div>
-
-                  {/* Tags & Action Buttons */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex flex-wrap gap-1">
-                      {(word.tags || []).slice(0, 2).map((tag, idx) => (
-                        <span key={idx} className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => onResetWordProgress(word.id)}
-                        className="p-1 rounded text-slate-500 hover:text-amber-400 transition-colors"
-                        title="重設學習進度"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => onEditWord(word)}
-                        className="p-1 rounded text-slate-500 hover:text-indigo-400 transition-colors"
-                        title="編輯單字"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          if (confirm(`確定要刪除單字「${word.word}」嗎？`)) {
-                            onDeleteWord(word.id);
-                          }
-                        }}
-                        className="p-1 rounded text-slate-500 hover:text-rose-400 transition-colors"
-                        title="刪除單字"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                  <div className="text-right">
+                    <div style={{ color: 'var(--text-2)' }}>{formatSeconds(word.averageTimeMs)}</div>
+                    <div style={{ color: 'var(--text-3)' }}>均速</div>
                   </div>
+                </div>
+
+                {/* Familiarity badge */}
+                <span
+                  className="hidden sm:inline-block shrink-0 text-xs px-2 py-0.5 rounded-md font-medium"
+                  style={{ color: style.color, background: style.bg }}
+                >
+                  {badge.label}
+                </span>
+
+                {/* Actions */}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={() => onResetWordProgress(word.id)}
+                    className="p-1.5 rounded-lg transition-colors"
+                    title="重設進度"
+                    style={{ color: 'var(--text-3)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--amber)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => onEditWord(word)}
+                    className="p-1.5 rounded-lg transition-colors"
+                    title="編輯"
+                    style={{ color: 'var(--text-3)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { if (confirm(`確定要刪除「${word.word}」？`)) onDeleteWord(word.id); }}
+                    className="p-1.5 rounded-lg transition-colors"
+                    title="刪除"
+                    style={{ color: 'var(--text-3)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );

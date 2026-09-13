@@ -16,26 +16,26 @@ export const SpeedGauge: React.FC<SpeedGaugeProps> = ({
   const seconds = (elapsedMs / 1000).toFixed(2);
 
   // Speed level & color calculation
-  let colorClass = 'text-amber-400 border-amber-500/40 bg-amber-500/10';
-  let barColor = 'bg-amber-400';
-  let label = '⚡ 極速精通區';
+  let colorVar = '--amber';
+  let barColor = '#C47A00';
+  let label = '極速精通';
 
   if (elapsedMs <= lightningMs) {
-    colorClass = 'text-amber-400 border-amber-500/40 bg-amber-500/10';
-    barColor = 'bg-gradient-to-r from-amber-400 to-amber-500';
-    label = '⚡ 極速精通';
+    colorVar = '--amber';
+    barColor = '#C47A00';
+    label = '極速精通';
   } else if (elapsedMs <= goodMs) {
-    colorClass = 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10';
-    barColor = 'bg-gradient-to-r from-emerald-400 to-emerald-500';
-    label = '✨ 熟練反應';
+    colorVar = '--green';
+    barColor = '#1A7F56';
+    label = '熟練反應';
   } else if (elapsedMs <= slowMs) {
-    colorClass = 'text-blue-400 border-blue-500/40 bg-blue-500/10';
-    barColor = 'bg-gradient-to-r from-blue-400 to-blue-500';
-    label = '⏳ 思考中';
+    colorVar = '--accent';
+    barColor = '#3B6FF0';
+    label = '思考中';
   } else {
-    colorClass = 'text-rose-400 border-rose-500/40 bg-rose-500/10';
-    barColor = 'bg-gradient-to-r from-rose-400 to-rose-600';
-    label = '⚠️ 偏生疏 (將重試)';
+    colorVar = '--red';
+    barColor = '#C8364A';
+    label = '偏生疏，稍後重試';
   }
 
   // Calculate percentage of slowMs limit for progress gauge (0 to 100%)
@@ -44,55 +44,64 @@ export const SpeedGauge: React.FC<SpeedGaugeProps> = ({
 
   return (
     <div className="w-full flex flex-col items-center gap-2">
-      <div className="flex items-center justify-between w-full text-xs font-medium text-slate-400 px-1">
+      <div className="flex items-center justify-between w-full text-xs px-1" style={{ color: 'var(--text-3)' }}>
         <div className="flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <Clock className="w-3.5 h-3.5" />
           <span>拼寫耗時</span>
         </div>
-        <div className={`px-2 py-0.5 rounded-full border text-xs font-semibold ${colorClass}`}>
+        <div
+          className="px-2 py-0.5 rounded-full border text-xs font-semibold"
+          style={{ color: `var(${colorVar})`, borderColor: `var(${colorVar})`, background: `var(${colorVar}-dim, rgba(0,0,0,0.05))` }}
+        >
           {label}
         </div>
       </div>
 
       {/* Big Digital Stopwatch */}
       <div className="flex items-baseline justify-center gap-1 font-mono tracking-tight">
-        <span className="text-3xl sm:text-4xl font-extrabold text-slate-100 font-['Fira_Code',_monospace]">
+        <span
+          className="text-3xl sm:text-4xl font-extrabold"
+          style={{ color: 'var(--text-1)' }}
+        >
           {seconds}
         </span>
-        <span className="text-sm font-semibold text-slate-400">秒</span>
+        <span className="text-sm font-semibold" style={{ color: 'var(--text-3)' }}>秒</span>
       </div>
 
       {/* Visual Threshold Bar */}
-      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
+      <div
+        className="w-full h-2 rounded-full overflow-hidden relative"
+        style={{ background: 'var(--surface-2)' }}
+      >
         {/* Threshold Markers */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-amber-400/60 z-10"
-          style={{ left: `${(lightningMs / maxScale) * 100}%` }}
+          className="absolute top-0 bottom-0 w-0.5 z-10 opacity-40"
+          style={{ left: `${(lightningMs / maxScale) * 100}%`, background: '#C47A00' }}
           title="極速門檻"
         />
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-emerald-400/60 z-10"
-          style={{ left: `${(goodMs / maxScale) * 100}%` }}
+          className="absolute top-0 bottom-0 w-0.5 z-10 opacity-40"
+          style={{ left: `${(goodMs / maxScale) * 100}%`, background: '#1A7F56' }}
           title="熟練門檻"
         />
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-blue-400/60 z-10"
-          style={{ left: `${(slowMs / maxScale) * 100}%` }}
+          className="absolute top-0 bottom-0 w-0.5 z-10 opacity-40"
+          style={{ left: `${(slowMs / maxScale) * 100}%`, background: '#3B6FF0' }}
           title="生疏門檻"
         />
 
         {/* Animated Fill Bar */}
         <div
-          className={`h-full transition-all duration-75 ease-out rounded-full ${barColor}`}
-          style={{ width: `${progressPercent}%` }}
+          className="h-full transition-all duration-75 ease-out rounded-full"
+          style={{ width: `${progressPercent}%`, background: barColor }}
         />
       </div>
 
-      <div className="flex justify-between w-full text-[10px] text-slate-500 px-0.5">
-        <span>0s (開始)</span>
-        <span className="text-amber-400/80">&lt;{(lightningMs / 1000).toFixed(1)}s 精通</span>
-        <span className="text-emerald-400/80">&lt;{(goodMs / 1000).toFixed(1)}s 熟練</span>
-        <span className="text-rose-400/80">&gt;{(slowMs / 1000).toFixed(1)}s 生疏</span>
+      <div className="flex justify-between w-full text-[10px] px-0.5" style={{ color: 'var(--text-3)' }}>
+        <span>0s</span>
+        <span style={{ color: '#C47A00' }}>精通 &lt;{(lightningMs / 1000).toFixed(1)}s</span>
+        <span style={{ color: '#1A7F56' }}>熟練 &lt;{(goodMs / 1000).toFixed(1)}s</span>
+        <span style={{ color: '#C8364A' }}>生疏 &gt;{(slowMs / 1000).toFixed(1)}s</span>
       </div>
     </div>
   );

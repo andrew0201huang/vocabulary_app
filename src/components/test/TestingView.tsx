@@ -506,7 +506,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
               onClick={e => e.stopPropagation()}>
               {(playDialogStep === 'unlocking' || playDialogStep === 'speaking') && (
                 <>
-                  <div className="text-3xl animate-bounce">🔊</div>
+                  <Volume2 className="w-8 h-8 text-indigo-400 animate-pulse" />
                   <div className="text-sm font-bold text-indigo-300">
                     播放：<span className="text-white font-mono text-lg">{currentWord.word}</span>
                   </div>
@@ -521,7 +521,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
               )}
               {playDialogStep === 'done' && (
                 <>
-                  <div className="text-3xl">✅</div>
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                   <div className="text-sm font-bold text-emerald-300">播放完畢</div>
                 </>
               )}
@@ -613,40 +613,11 @@ export const TestingView: React.FC<TestingViewProps> = ({
         )}
       </div>
 
-      {/* Input Method Switcher Bar */}
+      {/* Input Method Switcher Bar — 手寫/語音入口暫時隱藏
       <div className="flex items-center justify-center gap-2">
-        <span className="text-xs text-slate-500">切換模式：</span>
-        <button
-          onClick={() => setCurrentInputMode('keyboard')}
-          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-            currentInputMode === 'keyboard'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          鍵盤打字
-        </button>
-        <button
-          onClick={() => setCurrentInputMode('handwriting')}
-          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-            currentInputMode === 'handwriting'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          手寫繪圖
-        </button>
-        <button
-          onClick={() => setCurrentInputMode('voice')}
-          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-            currentInputMode === 'voice'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          語音拼讀
-        </button>
+        ...
       </div>
+      */}
 
       {/* Input Area */}
       <div className="w-full">

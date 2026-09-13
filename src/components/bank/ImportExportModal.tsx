@@ -97,7 +97,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               className="p-4 rounded-2xl bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 text-left flex flex-col gap-1 transition-all group active:scale-[0.98]"
             >
               <div className="font-bold text-emerald-300 group-hover:text-emerald-200">
-                🎒 國小基本必備單字
+                國小基本必備單字
               </div>
               <div className="text-xs text-slate-400">
                 教育部國小核心基礎單字，附例句、音標與詞性。
@@ -115,7 +115,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               className="p-4 rounded-2xl bg-blue-950/20 hover:bg-blue-950/40 border border-blue-500/30 text-left flex flex-col gap-1 transition-all group active:scale-[0.98]"
             >
               <div className="font-bold text-blue-300 group-hover:text-blue-200">
-                🏫 國中會考核心單字
+                國中會考核心單字
               </div>
               <div className="text-xs text-slate-400">
                 教育部國中必備 1200+ 核心單字與各領域分類。

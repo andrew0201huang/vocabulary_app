@@ -43,25 +43,37 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity animate-fade-in"
+        className="fixed inset-0 backdrop-blur-sm animate-fade-in"
+        style={{ background: 'rgba(14,15,17,0.85)' }}
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
       <div
-        className={`relative w-full ${maxWidthClasses} bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-indigo-950/30 overflow-hidden transform transition-all z-10 my-8`}
+        className={`relative w-full ${maxWidthClasses} rounded-2xl overflow-hidden z-10 my-8`}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-900/60">
-          <div className="text-lg font-bold text-slate-100 flex items-center gap-2">
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <div className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-1)' }}>
             {title}
           </div>
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 hover:bg-slate-800 p-1.5 rounded-lg transition-colors"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-2)' }}
               title="關閉"
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-1)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-2)')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -69,7 +81,10 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto text-slate-200 custom-scrollbar">
+        <div
+          className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto custom-scrollbar"
+          style={{ color: 'var(--text-1)' }}
+        >
           {children}
         </div>
       </div>

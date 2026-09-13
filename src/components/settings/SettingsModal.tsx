@@ -20,9 +20,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetAllData,
 }) => {
   const [googleClientId, setGoogleClientId] = useState(settings.googleClientId || '');
-  const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey || '');
-  const [googleSpeechApiKey, setGoogleSpeechApiKey] = useState(settings.googleSpeechApiKey || '');
-  const [voiceSpeechEngine, setVoiceSpeechEngine] = useState<VoiceSpeechEngine>(settings.voiceSpeechEngine || 'browser');
+  // 語音拼讀設定 UI 已隱藏，值從 settings 直接穿透至 handleSave
+  const openaiApiKey = settings.openaiApiKey || '';
+  const googleSpeechApiKey = settings.googleSpeechApiKey || '';
+  const voiceSpeechEngine: VoiceSpeechEngine = settings.voiceSpeechEngine || 'browser';
   const [speechRate, setSpeechRate] = useState(settings.speechRate || 0.95);
   const [speechPitch, setSpeechPitch] = useState(settings.speechPitch || 1.0);
   const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(settings.soundEffectsEnabled ?? true);
@@ -88,18 +89,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     >
       <div className="flex flex-col gap-6">
         {/* Section 1: Reaction Time Speed Thresholds */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
+        <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Gauge className="w-4 h-4 text-indigo-400" />
               <span>反應時間等級判定門檻 (Speed Thresholds: 5s, 10s, 15s)</span>
             </label>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
             <div>
-              <span className="text-[11px] text-amber-400 block mb-1 font-bold">⚡ 極速精通</span>
+              <span className="text-[11px] text-amber-400 block mb-1 font-bold">極速精通</span>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-400">&lt;</span>
+                <span className="text-xs text-slate-500">&lt;</span>
                 <input
                   type="number"
                   step="0.5"
@@ -107,16 +108,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   max="10.0"
                   value={lightningSec}
                   onChange={(e) => setLightningSec(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-center text-slate-100"
+                  className="w-full px-2 py-1.5 rounded-lg border text-xs font-mono text-center transition-all focus:outline-none" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }}
                 />
-                <span className="text-xs text-slate-400">秒</span>
+                <span className="text-xs text-slate-500">秒</span>
               </div>
             </div>
 
             <div>
-              <span className="text-[11px] text-emerald-400 block mb-1 font-bold">✨ 熟練反應</span>
+              <span className="text-[11px] text-emerald-400 block mb-1 font-bold">熟練反應</span>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-400">&lt;</span>
+                <span className="text-xs text-slate-500">&lt;</span>
                 <input
                   type="number"
                   step="0.5"
@@ -127,16 +128,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setGoodSec(e.target.value);
                     setChineseDelaySeconds(Math.round(Number(e.target.value)));
                   }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-center text-slate-100"
+                  className="w-full px-2 py-1.5 rounded-lg border text-xs font-mono text-center transition-all focus:outline-none" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }}
                 />
-                <span className="text-xs text-slate-400">秒</span>
+                <span className="text-xs text-slate-500">秒</span>
               </div>
             </div>
 
             <div>
-              <span className="text-[11px] text-rose-400 block mb-1 font-bold">⚠️ 生疏重測</span>
+              <span className="text-[11px] text-rose-400 block mb-1 font-bold">生疏重測</span>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-400">&gt;</span>
+                <span className="text-xs text-slate-500">&gt;</span>
                 <input
                   type="number"
                   step="0.5"
@@ -144,21 +145,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   max="30.0"
                   value={slowSec}
                   onChange={(e) => setSlowSec(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-center text-slate-100"
+                  className="w-full px-2 py-1.5 rounded-lg border text-xs font-mono text-center transition-all focus:outline-none" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-1)' }}
                 />
-                <span className="text-xs text-slate-400">秒</span>
+                <span className="text-xs text-slate-500">秒</span>
               </div>
             </div>
           </div>
-          <div className="text-[10px] text-slate-400 pt-0.5">
+          <div className="text-[10px] text-slate-500 pt-0.5">
             作答時間超過門檻將自動歸入「生疏動態複習池」，於回合尾端重新測驗。
           </div>
         </div>
 
         {/* Section 2: Listening-First Prompt Delay (Tied to Slow Threshold) */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
+        <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <Headphones className="w-4 h-4 text-cyan-400" />
               <span>聽音優先：延遲顯示中文釋義時間（以生疏門檻為準）</span>
             </label>
@@ -166,7 +167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {chineseDelaySeconds === 0 ? '即時顯示' : `${chineseDelaySeconds} 秒`}
             </span>
           </div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-[11px] text-slate-500">
             出題時先播放英文發音，前 {chineseDelaySeconds} 秒隱藏中文，超過時間後自動顯示中文釋義提供輔助。
           </div>
           <div className="grid grid-cols-4 gap-2 pt-1">
@@ -183,7 +184,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
                   chineseDelaySeconds === sec
                     ? 'border-cyan-500 bg-cyan-950/50 text-cyan-200 shadow-md ring-1 ring-cyan-500/30'
-                    : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                    : 'border-slate-800 bg-slate-900/60 text-slate-500 hover:text-slate-900'
                 }`}
               >
                 {label}
@@ -193,15 +194,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Section 3: Speech Synthesis (TTS) Settings */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
-          <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+        <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-3">
+          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Volume2 className="w-4 h-4 text-indigo-400" />
             <span>語音合成發音設定 (Speech Synthesis)</span>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <div className="flex justify-between text-xs text-slate-400 mb-1">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
                 <span>語速 (Speed Rate)：</span>
                 <span className="font-mono text-indigo-300">{speechRate}x</span>
               </div>
@@ -212,12 +213,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 step="0.05"
                 value={speechRate}
                 onChange={(e) => setSpeechRate(Number(e.target.value))}
-                className="w-full accent-indigo-500"
+                className="w-full accent-indigo-600"
               />
             </div>
 
             <div>
-              <div className="flex justify-between text-xs text-slate-400 mb-1">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
                 <span>音調 (Pitch)：</span>
                 <span className="font-mono text-indigo-300">{speechPitch}</span>
               </div>
@@ -228,7 +229,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 step="0.05"
                 value={speechPitch}
                 onChange={(e) => setSpeechPitch(Number(e.target.value))}
-                className="w-full accent-indigo-500"
+                className="w-full accent-indigo-600"
               />
             </div>
           </div>
@@ -239,15 +240,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="checkbox"
                 checked={soundEffectsEnabled}
                 onChange={(e) => setSoundEffectsEnabled(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 bg-slate-800 border-slate-700 focus:ring-indigo-500"
+                className="w-4 h-4 rounded text-indigo-600 bg-white border-slate-300 focus:ring-indigo-500"
               />
-              <span className="text-xs text-slate-300">啟用介面音效 (正確/錯誤/通關音)</span>
+              <span className="text-xs text-slate-800">啟用介面音效 (正確/錯誤/通關音)</span>
             </label>
 
             <button
               type="button"
               onClick={handleTestSpeech}
-              className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 flex items-center gap-1.5"
+              className="px-3 py-1 rounded-lg border bg-white border-slate-200 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--accent)' }}
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>試聽語音</span>
@@ -255,93 +256,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Section 4: Voice Speech Engine — Offline Recording Mode */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🎙️</span>
-            <span className="text-xs font-bold text-slate-200">語音拼讀引擎設定</span>
-          </div>
-
-          {/* Engine selector */}
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { value: 'browser', label: '🌐 瀏覽器', sub: '即時串流\n(預設)' },
-              { value: 'google',  label: '🔵 Google', sub: '離線錄音\nSpeech API' },
-              { value: 'openai',  label: '🟣 OpenAI', sub: '離線錄音\nWhisper-1' },
-            ] as { value: VoiceSpeechEngine; label: string; sub: string }[]).map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setVoiceSpeechEngine(opt.value)}
-                className={`py-2.5 px-2 rounded-xl border text-center transition-all ${
-                  voiceSpeechEngine === opt.value
-                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-200 shadow-md'
-                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500'
-                }`}
-              >
-                <div className="text-xs font-bold">{opt.label}</div>
-                {opt.sub.split('\n').map((l, i) => (
-                  <div key={i} className="text-[10px] text-slate-500 leading-tight">{l}</div>
-                ))}
-              </button>
-            ))}
-          </div>
-
-          {/* Description per engine */}
-          <div className="text-[11px] text-slate-400 leading-relaxed">
-            {voiceSpeechEngine === 'browser' && '使用 Chrome / Edge 瀏覽器內建語音辨識，即時串流至 Google 語音伺服器。網路不穩定時可能出現 network 錯誤。'}
-            {voiceSpeechEngine === 'google'  && '🎉 先在本機完整錄音，錄完後一次上傳至 Google Cloud Speech-to-Text 辨識，不受錄音中網路狀態影響，辨識精準。'}
-            {voiceSpeechEngine === 'openai'  && '🎉 先在本機完整錄音，錄完後一次上傳至 OpenAI Whisper-1 辨識，精確度高、支援字母拼讀與整字辨識。'}
-          </div>
-
-          {/* Google Speech API Key (shown when google selected) */}
-          {voiceSpeechEngine === 'google' && (
-            <div className="flex flex-col gap-2 pt-1 border-t border-slate-800">
-              <label className="text-[11px] font-bold text-slate-300">
-                Google Cloud Speech-to-Text API Key：
-              </label>
-              <input
-                type="password"
-                value={googleSpeechApiKey}
-                onChange={(e) => setGoogleSpeechApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
-              />
-              <div className="text-[10px] text-slate-500 leading-relaxed">
-                前往 <a href="https://console.cloud.google.com/apis/library/speech.googleapis.com" target="_blank" rel="noreferrer" className="text-indigo-400 underline">Google Cloud Console</a> 啟用 <strong>Cloud Speech-to-Text API</strong>，<br />
-                再至「憑證」建立「API 金鑰」並限制為 Speech-to-Text API。<br />
-                金鑰僅存在瀏覽器本機（localStorage）。
-              </div>
-            </div>
-          )}
-
-          {/* OpenAI Whisper API Key (shown when openai selected) */}
-          {voiceSpeechEngine === 'openai' && (
-            <div className="flex flex-col gap-2 pt-1 border-t border-slate-800">
-              <label className="text-[11px] font-bold text-slate-300">
-                OpenAI API Key (sk-...)：
-              </label>
-              <input
-                type="password"
-                value={openaiApiKey}
-                onChange={(e) => setOpenaiApiKey(e.target.value)}
-                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
-              />
-              <div className="text-[10px] text-slate-500 leading-relaxed">
-                前往 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-indigo-400 underline">platform.openai.com/api-keys</a> 建立 API Key。<br />
-                金鑰僅存在瀏覽器本機（localStorage）。
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Section 4: Voice Speech Engine — 語音拼讀引擎設定已暫時隱藏 */}
 
         {/* Section 5: Google Cloud Authorization (Clean / Hidden by default) */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col gap-2.5">
+        <div className="p-4 rounded-2xl border bg-white border-slate-200 shadow-sm flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold text-slate-200">Google Drive 雲端同步設定</span>
+              <span className="text-xs font-bold text-slate-900">Google Drive 雲端同步設定</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
                 已就緒
               </span>
@@ -357,13 +279,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
 
-          <div className="text-[11px] text-slate-400">
+          <div className="text-[11px] text-slate-500">
             使用者點擊「Google 登入」即可直接同步進度至個人雲端硬碟（<code>appDataFolder</code> 專屬目錄）。
           </div>
 
           {showAdvancedAuth && (
-            <div className="mt-2 p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-col gap-2 animate-fade-in">
-              <label className="text-[11px] font-bold text-slate-300">
+            <div className="mt-2 p-3 rounded-xl border bg-slate-50 border-slate-200 flex flex-col gap-2 animate-fade-in">
+              <label className="text-[11px] font-bold text-slate-800">
                 自訂 Google OAuth 2.0 Client ID (一般使用者無需修改)：
               </label>
               <input
@@ -371,20 +293,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 value={googleClientId}
                 onChange={(e) => setGoogleClientId(e.target.value)}
                 placeholder="例如：547959897484-xxxxxx.apps.googleusercontent.com"
-                className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-1.5 rounded-lg border text-xs font-mono focus:outline-none transition-all" style={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text-1)' }}
               />
             </div>
           )}
         </div>
 
         {/* Section 5: Dangerous Zone - Reset Data */}
-        <div className="p-4 rounded-2xl bg-rose-950/20 border border-rose-500/30 flex items-center justify-between">
+        <div className="p-4 rounded-2xl border bg-rose-50 border-rose-200 flex items-center justify-between">
           <div>
             <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
               <ShieldAlert className="w-4 h-4 text-rose-400" />
               <span>重設本機所有學習資料</span>
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
+            <div className="text-[10px] text-slate-500 mt-0.5">
               清除單字熟悉度與測驗紀錄，回復為預設單字狀態
             </div>
           </div>
@@ -408,7 +330,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+            className="py-2.5 px-4 rounded-xl border bg-white border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
           >
             取消
           </button>
@@ -416,7 +338,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="py-2.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-950/40"
+            className="py-2.5 px-6 rounded-xl text-white hover:opacity-90 text-xs font-bold flex items-center gap-1.5 shadow-md" style={{ backgroundColor: 'var(--accent)' }}
           >
             {isSaved ? <Check className="w-4 h-4" /> : null}
             <span>{isSaved ? '已儲存！' : '儲存設定'}</span>

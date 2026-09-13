@@ -163,41 +163,62 @@ export interface DictResult {
   exampleEn?: string;
 }
 
+/** Timeout wrapper compatible with all browsers (no AbortSignal.timeout) */
+function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  return Promise.race([
+    fetch(url),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), ms)
+    ),
+  ]);
+}
+
+/** True if string contains CJK characters (real Chinese translation) */
+function hasChinese(s: string): boolean {
+  return /[\u4e00-\u9fff\u3400-\u4dbf]/.test(s);
+}
+
 /**
  * Translate a single English word to Traditional Chinese.
- * Tries multiple free services in order until one succeeds.
+ * Uses MyMemory (free, CORS-enabled). Falls back gracefully.
  */
 async function translateToZH(word: string): Promise<string> {
   const encoded = encodeURIComponent(word);
 
-  // 1. MyMemory (single word only, no quota issue)
+  // MyMemory — free, CORS-enabled, 1000 words/day (no email) / 10000 with email
   try {
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encoded}&langpair=en|zh-TW&de=a@b.com`,
-      { signal: AbortSignal.timeout(5000) }
+    const res = await fetchWithTimeout(
+      `https://api.mymemory.translated.net/get?q=${encoded}&langpair=en|zh-TW&de=vocab@app.local`,
+      7000
     );
     if (res.ok) {
       const data = await res.json();
-      const t: string = data?.responseData?.translatedText ?? '';
-      // MyMemory returns 'QUERY LENGTH LIMIT EXCEDEED' or the original on failure
-      if (t && t !== word && !t.toUpperCase().includes('LIMIT') && !t.toUpperCase().includes('QUERY')) {
-        return t;
+      // quota check
+      if (data.quotaFinished) {
+        console.warn('[lookup] MyMemory quota exceeded');
+      } else {
+        const t: string = data?.responseData?.translatedText ?? '';
+        if (hasChinese(t)) return t;
       }
     }
-  } catch { /* try next */ }
+  } catch (e) {
+    console.warn('[lookup] MyMemory error', e);
+  }
 
-  // 2. Google Translate unofficial single-word endpoint (no key needed for short queries)
+  // Lingva Translate — open-source Google Translate mirror, CORS-enabled
   try {
-    const res = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encoded}`,
-      { signal: AbortSignal.timeout(5000) }
+    const res = await fetchWithTimeout(
+      `https://lingva.ml/api/v1/en/zh_TW/${encoded}`,
+      7000
     );
     if (res.ok) {
       const data = await res.json();
-      const t: string = data?.[0]?.[0]?.[0] ?? '';
-      if (t && t !== word) return t;
+      const t: string = data?.translation ?? '';
+      if (hasChinese(t)) return t;
     }
-  } catch { /* try next */ }
+  } catch (e) {
+    console.warn('[lookup] Lingva error', e);
+  }
 
   return '';
 }

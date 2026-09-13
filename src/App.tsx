@@ -152,7 +152,14 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div
+      className="min-h-screen flex flex-col font-sans"
+      style={{
+        background: 'var(--bg)',
+        color: 'var(--text-1)',
+        '--tw-ring-color': 'var(--accent)',
+      } as React.CSSProperties}
+    >
       {/* Debug Panel (floating 🐛 button — single tap opens logs, double tap enables recording) */}
       <DebugPanel />
       {/* App Header */}
@@ -241,7 +248,7 @@ export const App: React.FC = () => {
               handleStartRound({
                 wordCount: filtered.length,
                 filterMode: 'all',
-                wordIds: filtered.map(w => w.id),  // pass exact IDs, ignore filterMode
+                wordIds: filtered.map(w => w.id),
                 inputMode: settings.defaultInputMode || 'keyboard',
                 autoPlayAudio: true,
                 showPhoneticHint: false,
@@ -267,20 +274,23 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-800/60 text-center text-xs text-slate-500 flex flex-col items-center gap-1.5">
-        <div>SpeedVocab · 拼寫反應時間英文單字記憶 Web App · Serverless & 本地/雲端同步</div>
-        <div className="text-slate-600 text-[11px] flex items-center gap-2">
-          <span>支援一般使用者免設定本機使用、離線 PWA、Canvas 手寫與 Web Speech API 語音拼讀</span>
-          <span>·</span>
-          <a
-            href="./privacy.html"
-            target="_blank"
-            rel="noreferrer"
-            className="text-slate-400 hover:text-indigo-300 underline transition-colors"
-          >
-            隱私權政策 (Privacy Policy)
-          </a>
-        </div>
+      <footer
+        className="py-5 text-center text-xs"
+        style={{ borderTop: '1px solid var(--border)', color: 'var(--text-3)' }}
+      >
+        <span>SpeedVocab</span>
+        <span className="mx-2" style={{ color: 'var(--border)' }}>·</span>
+        <a
+          href="./privacy.html"
+          target="_blank"
+          rel="noreferrer"
+          className="transition-colors"
+          style={{ color: 'var(--text-3)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-3)')}
+        >
+          隱私權政策
+        </a>
       </footer>
 
       {/* User Login & Profile Modal */}
