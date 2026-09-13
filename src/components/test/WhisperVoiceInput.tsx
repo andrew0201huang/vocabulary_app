@@ -353,7 +353,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
           return (
             <div key={idx} className={`w-9 h-11 sm:w-11 sm:h-13 rounded-lg border-2 flex items-center justify-center font-mono text-xl sm:text-2xl font-bold transition-all ${
               ch ? 'border-indigo-500 bg-indigo-950/40 text-indigo-200 shadow-md'
-                 : 'border-slate-800 bg-slate-900/60 text-transparent'
+                 : 'border-slate-200 bg-slate-50 text-transparent'
             }`}>
               {ch || '•'}
             </div>
@@ -362,23 +362,23 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
       </div>
 
       {/* Main Card */}
-      <div className="w-full max-w-md rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl flex flex-col items-center gap-3 p-5 text-center">
+      <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-xl flex flex-col items-center gap-3 p-5 text-center">
 
         {/* Engine badge */}
-        <div className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold tracking-wide">
+        <div className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold tracking-wide">
           {ENGINE_LABEL[engine]}
         </div>
 
         {/* Status */}
         <div className="flex items-center justify-center gap-2 text-sm font-semibold min-h-[22px]">
-          {state === 'idle' && <span className="text-slate-400">點擊麥克風開始錄音</span>}
+          {state === 'idle' && <span className="text-slate-600">點擊麥克風開始錄音</span>}
           {state === 'recording' && (
             <>
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
               <span className="text-rose-300">
                 錄音中... {elapsedSec}s
-                {engine === 'browser' && <span className="text-xs text-slate-400 ml-1">（說完點 ■ 停止）</span>}
-                {engine !== 'browser' && <span className="text-xs text-slate-400 ml-1">（說完後點 ■ 送出辨識）</span>}
+                {engine === 'browser' && <span className="text-xs text-slate-600 ml-1">（說完點 ■ 停止）</span>}
+                {engine !== 'browser' && <span className="text-xs text-slate-600 ml-1">（說完後點 ■ 送出辨識）</span>}
               </span>
             </>
           )}
@@ -401,7 +401,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
         <div className="flex items-center gap-3">
           {state === 'recording' ? (
             <button type="button" onClick={stopRecording} disabled={disabled}
-              className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-xl animate-pulse ring-4 ring-rose-500/30 transition-all active:scale-95"
+              className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500 text-slate-900 flex items-center justify-center shadow-xl animate-pulse ring-4 ring-rose-500/30 transition-all active:scale-95"
               title="停止錄音">
               <Square className="w-7 h-7 fill-current" />
             </button>
@@ -410,8 +410,8 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
               disabled={disabled || state === 'uploading'}
               className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 ${
                 state === 'uploading'
-                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105'
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-slate-900 hover:scale-105'
               }`}
               title="開始錄音">
               {state === 'uploading'
@@ -434,11 +434,11 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
 
         <div className="text-xs text-slate-500 flex items-center gap-1.5">
           <Radio className="w-3 h-3 text-indigo-500 shrink-0" />
-          <span>逐字唸 <strong className="text-slate-300">A · P · P · L · E</strong> 或直接念出完整單字</span>
+          <span>逐字唸 <strong className="text-slate-700">A · P · P · L · E</strong> 或直接念出完整單字</span>
         </div>
 
         {/* Recognized text */}
-        <div className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-center">
+        <div className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center">
           {spelledBuffer ? (
             <span className="font-mono text-xl font-bold text-indigo-300 tracking-widest uppercase">
               {spelledBuffer.split('').join(' ')}
@@ -467,7 +467,7 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
             <div className="flex items-center justify-end gap-2 pt-1 border-t border-rose-500/20">
               {onSwitchToKeyboard && (
                 <button type="button" onClick={onSwitchToKeyboard}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold">
                   切換鍵盤打字
                 </button>
               )}
@@ -483,15 +483,15 @@ export const WhisperVoiceInput: React.FC<OfflineVoiceInputProps> = ({
         {/* Action buttons */}
         <div className="flex items-center gap-2 w-full">
           <button type="button" onClick={handleDeleteLast} disabled={!spelledBuffer || disabled}
-            className="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5">
+            className="flex-1 py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5">
             <Delete className="w-3.5 h-3.5" /><span>退格</span>
           </button>
           <button type="button" onClick={handleClear} disabled={!spelledBuffer || disabled}
-            className="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs font-semibold text-slate-400 hover:text-rose-400">
+            className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-xs font-semibold text-slate-600 hover:text-rose-400">
             清空
           </button>
           <button type="button" onClick={handleSubmit} disabled={!spelledBuffer || disabled}
-            className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-md">
+            className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-xs font-bold text-slate-900 flex items-center justify-center gap-1.5 shadow-md">
             <CornerDownLeft className="w-3.5 h-3.5" /><span>送出確認</span>
           </button>
         </div>

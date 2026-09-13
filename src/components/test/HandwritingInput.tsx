@@ -125,8 +125,8 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
             onClick={() => setTool('pen')}
             className={`p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               tool === 'pen'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600 text-slate-900 shadow-md'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-800'
             }`}
           >
             <PenTool className="w-3.5 h-3.5" />
@@ -136,8 +136,8 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
             onClick={() => setTool('eraser')}
             className={`p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
               tool === 'eraser'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600 text-slate-900 shadow-md'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-800'
             }`}
           >
             <Eraser className="w-3.5 h-3.5" />
@@ -145,7 +145,7 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
           </button>
           <button
             onClick={clearCanvas}
-            className="p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-slate-800 text-slate-400 hover:text-rose-400 transition-all"
+            className="p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-slate-100 text-slate-600 hover:text-rose-400 transition-all"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>清空</span>
@@ -158,7 +158,7 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
       </div>
 
       {/* Canvas Drawing Area */}
-      <div className="relative w-full max-w-lg h-48 sm:h-56 rounded-2xl border-2 border-slate-700/80 bg-slate-900/90 shadow-inner overflow-hidden touch-none">
+      <div className="relative w-full max-w-lg h-48 sm:h-56 rounded-2xl border-2 border-slate-300/80 bg-white shadow-inner overflow-hidden touch-none">
         {/* Lined notebook guide lines */}
         <div className="absolute inset-0 pointer-events-none flex flex-col justify-evenly opacity-15">
           <div className="border-b border-indigo-400 w-full" />
@@ -182,8 +182,8 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
 
         {/* Revealed Answer Overlay */}
         {isRevealed && (
-          <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-4 animate-pop">
-            <span className="text-xs font-medium text-slate-400 mb-1">正確拼寫為：</span>
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-4 animate-pop">
+            <span className="text-xs font-medium text-slate-600 mb-1">正確拼寫為：</span>
             <span className="text-3xl font-extrabold text-indigo-300 font-mono tracking-wider">
               {targetWord}
             </span>
@@ -197,7 +197,7 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
           <button
             onClick={handleRevealAnswer}
             disabled={!hasDrawn || disabled}
-            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-slate-900 font-semibold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
           >
             <Eye className="w-5 h-5" />
             <span>完成書寫，顯示答案並評分</span>
@@ -214,7 +214,7 @@ export const HandwritingInput: React.FC<HandwritingInputProps> = ({
 
             <button
               onClick={() => handleGrade(true)}
-              className="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all active:scale-95"
+              className="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-900 font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all active:scale-95"
             >
               <CheckCircle2 className="w-5 h-5" />
               <span>我拼對了！</span>

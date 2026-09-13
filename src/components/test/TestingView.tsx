@@ -432,7 +432,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
       </div>
 
       {/* Round Progress Bar */}
-      <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80 shadow-inner">
+      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200 shadow-inner">
         <div
           className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-300"
           style={{ width: `${progressPercent}%` }}
@@ -445,7 +445,7 @@ export const TestingView: React.FC<TestingViewProps> = ({
       </div>
 
       {/* Main Prompt Card */}
-      <div className="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800 shadow-2xl flex flex-col items-center text-center gap-3">
+      <div className="relative p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xl flex flex-col items-center text-center gap-3">
         {/* Category Tags */}
         <div className="flex flex-wrap items-center justify-center gap-1.5">
           {currentWord.pos && (
@@ -468,16 +468,16 @@ export const TestingView: React.FC<TestingViewProps> = ({
 
           if (isChineseRevealed) {
             return (
-              <div className="text-2xl sm:text-4xl font-extrabold text-slate-100 tracking-wide my-1 transition-all duration-300 animate-fade-in">
+              <div className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-wide my-1 transition-all duration-300 animate-fade-in">
                 {currentWord.translation}
               </div>
             );
           }
 
           return (
-            <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-center gap-1.5 my-1 w-full max-w-sm">
+            <div className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-center gap-1.5 my-1 w-full max-w-sm">
               <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm">
-                <Headphones className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <Headphones className="w-4 h-4 text-indigo-500 animate-pulse" />
                 <span>聽音拼寫挑戰中...</span>
                 <span className="font-mono bg-indigo-900/80 px-2 py-0.5 rounded-lg border border-indigo-400/40 text-indigo-700 text-xs">
                   {delayRemainingSec}s

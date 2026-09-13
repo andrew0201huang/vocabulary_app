@@ -75,10 +75,10 @@ export const KeyboardInput = forwardRef<KeyboardInputHandle, KeyboardInputProps>
               key={idx}
               className={`w-9 h-11 sm:w-11 sm:h-13 rounded-lg border-2 flex items-center justify-center font-mono text-xl sm:text-2xl font-bold transition-all duration-150 shadow-sm ${
                 typedChar
-                  ? 'border-indigo-500 bg-indigo-950/30 text-indigo-200'
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                   : idx === value.length
-                  ? 'border-indigo-400/80 bg-slate-800/80 text-transparent animate-pulse'
-                  : 'border-slate-800 bg-slate-900/60 text-transparent'
+                  ? 'border-indigo-400/80 bg-white text-transparent animate-pulse'
+                  : 'border-slate-200 bg-slate-50 text-transparent'
               }`}
             >
               {typedChar || '•'}
@@ -101,9 +101,9 @@ export const KeyboardInput = forwardRef<KeyboardInputHandle, KeyboardInputProps>
           autoCapitalize="off"
           spellCheck="false"
           placeholder="請輸入英文單字..."
-          className={`w-full px-5 py-3.5 pr-14 text-center font-mono text-xl sm:text-2xl rounded-xl bg-slate-900/90 border-2 text-slate-100 placeholder-slate-600 focus:outline-none transition-all ${
+          className={`w-full px-5 py-3.5 pr-14 text-center font-mono text-xl sm:text-2xl rounded-xl bg-white border-2 text-slate-900 placeholder-slate-400 focus:outline-none transition-all ${
             isError
-              ? 'border-rose-500 bg-rose-950/20 animate-shake'
+              ? 'border-rose-500 bg-rose-50 animate-shake'
               : 'border-indigo-600/50 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20'
           }`}
         />
@@ -120,7 +120,7 @@ export const KeyboardInput = forwardRef<KeyboardInputHandle, KeyboardInputProps>
 
       <div className="text-xs text-slate-500 flex items-center gap-1.5">
         <span>按</span>
-        <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[11px]">
+        <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-slate-700 font-mono text-[11px]">
           Enter ↵
         </kbd>
         <span>立即送出答案</span>
