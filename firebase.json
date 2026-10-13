@@ -4,5 +4,15 @@
     "location": "asia-east1",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Vocab Speed Challenge",
+        "supportEmail": "andrew0201dev@gmail.com"
+      }
+    }
   }
 }

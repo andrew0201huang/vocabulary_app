@@ -234,8 +234,12 @@ export async function submitChallengeScore(params: {
   challenge: ChallengeDoc;
   displayName: string;
 }): Promise<LeaderboardEntry> {
-  const user = auth.currentUser;
-  if (!user) throw new Error('尚未登入參賽身分');
+  // Ensure user is signed in (auto-sign in anonymously if not yet signed in)
+  let user = auth.currentUser;
+  if (!user) {
+    const cred = await signInAnonymously(auth);
+    user = cred.user;
+  }
 
   const now = new Date();
   if (params.challenge.endsAt && now.getTime() > new Date(params.challenge.endsAt).getTime()) {
@@ -281,7 +285,7 @@ export async function submitChallengeScore(params: {
   const newEntry: LeaderboardEntry = {
     uid: user.uid,
     displayName: params.displayName || user.displayName || '挑戰者',
-    photoURL: user.photoURL || undefined,
+    photoURL: user.photoURL || '',
     score: totalScore,
     accuracy,
     totalTimeMs,
