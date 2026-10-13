@@ -30,6 +30,8 @@ import {
   getChallenge,
   importChallengeWords,
   submitChallengeScore,
+  subscribeMyChallenges,
+  loginWithGoogle,
 } from './services/firebaseChallengeService';
 import {
   SharedPack,
@@ -112,6 +114,8 @@ export const App: React.FC = () => {
     onlineChallengeId?: string;
   } | null>(null);
 
+  const [myChallenges, setMyChallenges] = useState<ChallengeDoc[]>([]);
+
   // Subscribe to Firebase Auth for challenges
   useEffect(() => {
     const unsub = subscribeAuth((player) => {
@@ -119,6 +123,18 @@ export const App: React.FC = () => {
     });
     return () => unsub();
   }, []);
+
+  // Subscribe to user's created challenges when logged in with Google
+  useEffect(() => {
+    if (currentPlayer && !currentPlayer.isAnonymous) {
+      const unsub = subscribeMyChallenges(currentPlayer.uid, (list) => {
+        setMyChallenges(list);
+      });
+      return () => unsub();
+    } else {
+      setMyChallenges([]);
+    }
+  }, [currentPlayer]);
 
   // Listen to hash routes (#/s/... and #/c/CODE)
   useEffect(() => {
@@ -472,7 +488,7 @@ export const App: React.FC = () => {
                     發起新競賽
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    挑選你的單字庫標籤，自訂為期 1 週或無限制的線上競賽
+                    挑選你的單字庫標籤，自訂為期 1 週或無限制的線上競賽（需 Google 登入）
                   </p>
                 </div>
                 <button
@@ -505,6 +521,80 @@ export const App: React.FC = () => {
                   輸入 6 碼代碼
                 </button>
               </div>
+            </div>
+
+            {/* My Created Challenges Section */}
+            <div className="mt-2 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold flex items-center gap-1.5 text-slate-800">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  我發起的競賽列表
+                  {myChallenges.length > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-normal text-slate-600">
+                      {myChallenges.length}
+                    </span>
+                  )}
+                </h3>
+                {(!currentPlayer || currentPlayer.isAnonymous) && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await loginWithGoogle();
+                        addToast('success', 'Google 登入成功！');
+                      } catch (err: any) {
+                        addToast('error', '登入失敗', err.message);
+                      }
+                    }}
+                    className="text-xs font-semibold text-indigo-600 hover:underline"
+                  >
+                    登入 Google 查看我的競賽
+                  </button>
+                )}
+              </div>
+
+              {(!currentPlayer || currentPlayer.isAnonymous) ? (
+                <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50">
+                  登入 Google 帳號後，您所發起的競賽會自動儲存並顯示於此，隨時可直接點擊查榜！
+                </div>
+              ) : myChallenges.length === 0 ? (
+                <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50">
+                  您目前尚未發起過任何競賽。點擊上方「發起標籤競賽」即可開始！
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {myChallenges.map((ch) => {
+                    const isExpired = ch.endsAt ? new Date().getTime() > new Date(ch.endsAt).getTime() : false;
+                    return (
+                      <div
+                        key={ch.id}
+                        onClick={() => setActiveOnlineChallenge(ch)}
+                        className="p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer hover:bg-indigo-50/50 hover:border-indigo-200 transition-all shadow-sm"
+                        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900">{ch.title}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-md font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              {ch.id}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            標籤「{ch.tag}」・{ch.words.length} 個單字・
+                            {ch.endsAt ? (isExpired ? '已截止' : `${new Date(ch.endsAt).toLocaleDateString()} 截止`) : '無截止日'}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 shrink-0"
+                        >
+                          查看排行榜
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -658,6 +748,7 @@ export const App: React.FC = () => {
         allTags={stats.allTags}
         words={words}
         settings={settings}
+        currentPlayer={currentPlayer}
         onToast={addToast}
         onChallengeCreated={async (code) => {
           setOnlineChallengeTag(null);

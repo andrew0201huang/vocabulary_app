@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Trophy, Clock, Share2, Copy, Check } from 'lucide-react';
+import { Trophy, Clock, Share2, Copy, Check, LogIn } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { WordItem, AppSettings } from '../../types/vocabulary';
-import { createOnlineChallenge } from '../../services/firebaseChallengeService';
+import { createOnlineChallenge, CurrentPlayer, loginWithGoogle } from '../../services/firebaseChallengeService';
 
 interface CreateOnlineChallengeModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface CreateOnlineChallengeModalProps {
   allTags: string[];
   words: WordItem[];
   settings: AppSettings;
+  currentPlayer: CurrentPlayer | null;
   onToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
   onChallengeCreated: (code: string) => void;
 }
@@ -22,6 +23,7 @@ export const CreateOnlineChallengeModal: React.FC<CreateOnlineChallengeModalProp
   allTags,
   words,
   settings,
+  currentPlayer,
   onToast,
   onChallengeCreated,
 }) => {
@@ -192,6 +194,29 @@ export const CreateOnlineChallengeModal: React.FC<CreateOnlineChallengeModalProp
               </ul>
             </div>
 
+            {(!currentPlayer || currentPlayer.isAnonymous) ? (
+              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <span className="text-amber-800 font-medium">
+                  🔒 系統規定：只有使用 Google 帳號登入才可發起競賽
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await loginWithGoogle();
+                      onToast('success', 'Google 登入成功！');
+                    } catch (e: any) {
+                      onToast('error', '登入失敗', e.message);
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg font-semibold bg-white border border-slate-300 text-slate-800 flex items-center gap-1.5 shrink-0 shadow-sm"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-indigo-600" />
+                  使用 Google 登入後發起
+                </button>
+              </div>
+            ) : null}
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -204,7 +229,7 @@ export const CreateOnlineChallengeModal: React.FC<CreateOnlineChallengeModalProp
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={isSubmitting || tagWords.length === 0}
+                disabled={isSubmitting || tagWords.length === 0 || !currentPlayer || currentPlayer.isAnonymous}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: 'var(--accent)' }}
               >

@@ -16,6 +16,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
   limit,
   onSnapshot,
   serverTimestamp,
@@ -152,13 +153,12 @@ export async function createOnlineChallenge(params: {
   slowMs?: number;
   chineseDelaySeconds?: number;
 }): Promise<string> {
-  const user = auth.currentUser;
-  if (!user) {
-    await signInAnonymously(auth);
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.isAnonymous) {
+    throw new Error('只有使用 Google 帳號登入的使用者才可發起競賽');
   }
-  const currentUser = auth.currentUser!;
-  const storedName = localStorage.getItem('speedvocab_player_name') || '挑戰發起人';
 
+  const storedName = localStorage.getItem('speedvocab_player_name') || '挑戰發起人';
   const code = generateChallengeCode();
   const tagWords = params.words
     .filter(w => w.tags.includes(params.tag))
@@ -200,6 +200,26 @@ export async function createOnlineChallenge(params: {
 
   await setDoc(doc(db, 'challenges', code), challengeData);
   return code;
+}
+
+export function subscribeMyChallenges(
+  uid: string,
+  callback: (challenges: ChallengeDoc[]) => void
+) {
+  const q = query(
+    collection(db, 'challenges'),
+    where('createdBy', '==', uid)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const list: ChallengeDoc[] = [];
+    snapshot.forEach(docSnap => {
+      list.push(docSnap.data() as ChallengeDoc);
+    });
+    // Sort descending by startsAt on client side to avoid requiring composite indexes
+    list.sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+    callback(list);
+  });
 }
 
 export async function getChallenge(code: string): Promise<ChallengeDoc | null> {
