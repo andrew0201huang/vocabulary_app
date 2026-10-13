@@ -92,7 +92,6 @@ export const App: React.FC = () => {
     authState,
     syncStatus,
     loginLocal,
-    loginGoogle,
     syncNow,
   } = useAuth();
 
@@ -117,13 +116,16 @@ export const App: React.FC = () => {
 
   const [myChallenges, setMyChallenges] = useState<ChallengeDoc[]>([]);
 
-  // Subscribe to Firebase Auth for challenges
+  // Subscribe to Firebase Auth for challenges and global identity
   useEffect(() => {
     const unsub = subscribeAuth((player) => {
       setCurrentPlayer(player);
+      if (player && !player.isAnonymous) {
+        loginLocal(player.displayName, player.photoURL || '⚡');
+      }
     });
     return () => unsub();
-  }, []);
+  }, [loginLocal]);
 
   // Subscribe to user's created challenges when logged in with Google
   useEffect(() => {
@@ -338,12 +340,24 @@ export const App: React.FC = () => {
     addToast('success', `歡迎，${name}！`, '已切換為本地使用者模式');
   };
 
-  const handleGoogleLogin = async (clientId: string) => {
+  const handleUnifiedGoogleLogin = async () => {
     try {
-      await loginGoogle(clientId);
-      addToast('success', 'Google 雲端同步已連線', '已載入最新雲端單字庫');
+      const player = await loginWithGoogle();
+      loginLocal(player.displayName, player.photoURL || '⚡');
+      addToast('success', 'Google 登入成功！', `歡迎回來，${player.displayName}`);
     } catch (err: any) {
       addToast('error', 'Google 登入失敗', err.message);
+      throw err;
+    }
+  };
+
+  const handleUnifiedGoogleLogout = async () => {
+    try {
+      await logoutFirebase();
+      loginLocal('一般學習者', '⚡');
+      addToast('info', '已登出 Google 帳號');
+    } catch (err: any) {
+      addToast('error', '登出失敗', err.message);
       throw err;
     }
   };
@@ -376,6 +390,7 @@ export const App: React.FC = () => {
         }}
         syncStatus={syncStatus}
         authState={authState}
+        currentPlayer={currentPlayer}
         onSyncClick={handleManualSync}
         onUserClick={() => setIsUserLoginModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -538,14 +553,7 @@ export const App: React.FC = () => {
                 </h3>
                 {(!currentPlayer || currentPlayer.isAnonymous) ? (
                   <button
-                    onClick={async () => {
-                      try {
-                        await loginWithGoogle();
-                        addToast('success', 'Google 登入成功！');
-                      } catch (err: any) {
-                        addToast('error', '登入失敗', err.message);
-                      }
-                    }}
+                    onClick={handleUnifiedGoogleLogin}
                     className="text-xs font-semibold text-indigo-600 hover:underline"
                   >
                     登入 Google 查看我的競賽
@@ -556,14 +564,7 @@ export const App: React.FC = () => {
                       已登入：<strong className="text-slate-800">{currentPlayer.displayName}</strong>
                     </span>
                     <button
-                      onClick={async () => {
-                        try {
-                          await logoutFirebase();
-                          addToast('info', '已登出 Google 帳號');
-                        } catch (err: any) {
-                          addToast('error', '登出失敗', err.message);
-                        }
-                      }}
+                      onClick={handleUnifiedGoogleLogout}
                       className="text-xs text-slate-400 hover:text-slate-600 underline"
                     >
                       登出
@@ -581,14 +582,7 @@ export const App: React.FC = () => {
                     若要「發起新競賽」或「在不同裝置管理查看自己發起的競賽清單」，請先登入 Google 帳號。
                   </p>
                   <button
-                    onClick={async () => {
-                      try {
-                        await loginWithGoogle();
-                        addToast('success', 'Google 登入成功！');
-                      } catch (err: any) {
-                        addToast('error', '登入失敗', err.message);
-                      }
-                    }}
+                    onClick={handleUnifiedGoogleLogin}
                     className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all"
                   >
                     立即使用 Google 帳號登入
@@ -674,11 +668,14 @@ export const App: React.FC = () => {
       <UserLoginModal
         isOpen={isUserLoginModalOpen}
         onClose={() => setIsUserLoginModalOpen(false)}
-        authState={authState}
-        googleClientId={settings.googleClientId || ''}
-        onLoginLocal={handleLocalLogin}
-        onLoginGoogle={handleGoogleLogin}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        currentPlayer={currentPlayer}
+        onLoginGoogle={handleUnifiedGoogleLogin}
+        onLogoutGoogle={handleUnifiedGoogleLogout}
+        localUserName={authState.user?.name || '一般學習者'}
+        localUserAvatar={authState.user?.avatar || '⚡'}
+        onSaveLocalUser={(name, avatar) => {
+          handleLocalLogin(name, avatar);
+        }}
       />
 
       {/* Modals */}

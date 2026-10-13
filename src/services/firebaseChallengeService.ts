@@ -78,6 +78,7 @@ export interface CurrentPlayer {
   displayName: string;
   isAnonymous: boolean;
   photoURL?: string | null;
+  email?: string | null;
 }
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ export function subscribeAuth(callback: (player: CurrentPlayer | null) => void) 
         displayName: name,
         isAnonymous: user.isAnonymous,
         photoURL: user.photoURL,
+        email: user.email,
       });
     }
   });
@@ -139,6 +141,7 @@ export async function loginWithGoogle(): Promise<CurrentPlayer> {
     displayName: name,
     isAnonymous: false,
     photoURL: user.photoURL,
+    email: user.email,
   };
 }
 
