@@ -4,6 +4,7 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
+  signOut,
   updateProfile,
   onAuthStateChanged,
   User,
@@ -15,9 +16,7 @@ import {
   setDoc,
   collection,
   query,
-  orderBy,
   where,
-  limit,
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -89,7 +88,17 @@ export function subscribeAuth(callback: (player: CurrentPlayer | null) => void) 
       callback(null);
     } else {
       const storedName = localStorage.getItem('speedvocab_player_name');
-      const name = user.displayName || storedName || (user.isAnonymous ? '匿名挑戰者' : '挑戰玩家');
+      let localName = '';
+      try {
+        const raw = localStorage.getItem('speedvocab_local_profile');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.name) localName = parsed.name;
+        }
+      } catch {
+        // ignore
+      }
+      const name = user.displayName || storedName || localName || (user.isAnonymous ? '匿名挑戰者' : '挑戰玩家');
       callback({
         uid: user.uid,
         displayName: name,
@@ -120,6 +129,7 @@ export async function loginAnonymouslyWithNickname(nickname: string): Promise<Cu
 
 export async function loginWithGoogle(): Promise<CurrentPlayer> {
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
   const cred = await signInWithPopup(auth, provider);
   const user = cred.user;
   const name = user.displayName || 'Google 玩家';
@@ -130,6 +140,11 @@ export async function loginWithGoogle(): Promise<CurrentPlayer> {
     isAnonymous: false,
     photoURL: user.photoURL,
   };
+}
+
+export async function logoutFirebase(): Promise<void> {
+  await signOut(auth);
+  localStorage.removeItem('speedvocab_player_name');
 }
 
 // ── Challenge Code Generation ────────────────────────────────────────────────
@@ -211,15 +226,21 @@ export function subscribeMyChallenges(
     where('createdBy', '==', uid)
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const list: ChallengeDoc[] = [];
-    snapshot.forEach(docSnap => {
-      list.push(docSnap.data() as ChallengeDoc);
-    });
-    // Sort descending by startsAt on client side to avoid requiring composite indexes
-    list.sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list: ChallengeDoc[] = [];
+      snapshot.forEach(docSnap => {
+        list.push(docSnap.data() as ChallengeDoc);
+      });
+      // Sort descending by startsAt on client side to avoid requiring composite indexes
+      list.sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+      callback(list);
+    },
+    (err) => {
+      console.error('[subscribeMyChallenges error]', err);
+    }
+  );
 }
 
 export async function getChallenge(code: string): Promise<ChallengeDoc | null> {
@@ -232,20 +253,23 @@ export function subscribeLeaderboard(
   code: string,
   callback: (entries: LeaderboardEntry[]) => void
 ) {
-  const q = query(
-    collection(db, 'challenges', code.toUpperCase(), 'scores'),
-    orderBy('score', 'desc'),
-    orderBy('totalTimeMs', 'asc'),
-    limit(50)
-  );
+  const colRef = collection(db, 'challenges', code.toUpperCase(), 'scores');
 
-  return onSnapshot(q, (snapshot) => {
-    const list: LeaderboardEntry[] = [];
-    snapshot.forEach(docSnap => {
-      list.push(docSnap.data() as LeaderboardEntry);
-    });
-    callback(list);
-  });
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: LeaderboardEntry[] = [];
+      snapshot.forEach(docSnap => {
+        list.push(docSnap.data() as LeaderboardEntry);
+      });
+      // Sort client-side: highest score first, then fastest time first
+      list.sort((a, b) => b.score - a.score || a.totalTimeMs - b.totalTimeMs);
+      callback(list);
+    },
+    (err) => {
+      console.error('[subscribeLeaderboard error]', err);
+    }
+  );
 }
 
 export async function submitChallengeScore(params: {

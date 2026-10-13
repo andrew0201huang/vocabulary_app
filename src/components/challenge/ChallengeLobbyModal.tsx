@@ -179,11 +179,34 @@ export const ChallengeLobbyModal: React.FC<ChallengeLobbyModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between text-xs px-1 text-slate-500">
-            <span>
-              目前參賽身分：<strong className="text-slate-800">{currentPlayer.displayName}</strong>
-              {currentPlayer.isAnonymous ? ' (匿名)' : ' (Google 帳號)'}
-            </span>
+          <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-indigo-500" />
+              <span>
+                目前參賽身分：<strong className="text-slate-800">{currentPlayer.displayName}</strong>
+                {currentPlayer.isAnonymous ? ' (匿名身分)' : ' (Google 帳號)'}
+              </span>
+            </div>
+            {currentPlayer.isAnonymous ? (
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={isLoggingIn}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+              >
+                <LogIn className="w-3 h-3" />
+                改用 Google 登入
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={isLoggingIn}
+                className="text-[11px] text-slate-400 hover:text-slate-600 underline"
+              >
+                切換帳號
+              </button>
+            )}
           </div>
         )}
 

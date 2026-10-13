@@ -32,6 +32,7 @@ import {
   submitChallengeScore,
   subscribeMyChallenges,
   loginWithGoogle,
+  logoutFirebase,
 } from './services/firebaseChallengeService';
 import {
   SharedPack,
@@ -535,7 +536,7 @@ export const App: React.FC = () => {
                     </span>
                   )}
                 </h3>
-                {(!currentPlayer || currentPlayer.isAnonymous) && (
+                {(!currentPlayer || currentPlayer.isAnonymous) ? (
                   <button
                     onClick={async () => {
                       try {
@@ -549,12 +550,49 @@ export const App: React.FC = () => {
                   >
                     登入 Google 查看我的競賽
                   </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">
+                      已登入：<strong className="text-slate-800">{currentPlayer.displayName}</strong>
+                    </span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await logoutFirebase();
+                          addToast('info', '已登出 Google 帳號');
+                        } catch (err: any) {
+                          addToast('error', '登出失敗', err.message);
+                        }
+                      }}
+                      className="text-xs text-slate-400 hover:text-slate-600 underline"
+                    >
+                      登出
+                    </button>
+                  </div>
                 )}
               </div>
 
               {(!currentPlayer || currentPlayer.isAnonymous) ? (
-                <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50">
-                  登入 Google 帳號後，您所發起的競賽會自動儲存並顯示於此，隨時可直接點擊查榜！
+                <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50 flex flex-col items-center gap-2.5">
+                  <p className="max-w-md">
+                    {currentPlayer?.isAnonymous
+                      ? `您目前是以「${currentPlayer.displayName}（匿名身分）」參賽。`
+                      : '尚未登入 Google 帳號。'}
+                    若要「發起新競賽」或「在不同裝置管理查看自己發起的競賽清單」，請先登入 Google 帳號。
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await loginWithGoogle();
+                        addToast('success', 'Google 登入成功！');
+                      } catch (err: any) {
+                        addToast('error', '登入失敗', err.message);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all"
+                  >
+                    立即使用 Google 帳號登入
+                  </button>
                 </div>
               ) : myChallenges.length === 0 ? (
                 <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50">
