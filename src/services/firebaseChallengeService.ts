@@ -220,6 +220,135 @@ export async function createOnlineChallenge(params: {
   return code;
 }
 
+export interface UserChallengeItem extends ChallengeDoc {
+  relation: 'created' | 'participated';
+}
+
+export function getLocalParticipatedCodes(): string[] {
+  try {
+    const raw = localStorage.getItem('speedvocab_participated_challenges');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(c => String(c).toUpperCase());
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function saveLocalParticipatedCode(code: string): void {
+  try {
+    const list = getLocalParticipatedCodes();
+    const upper = code.trim().toUpperCase();
+    if (!list.includes(upper)) {
+      list.unshift(upper);
+      localStorage.setItem('speedvocab_participated_challenges', JSON.stringify(list.slice(0, 50)));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function recordChallengeParticipation(code: string): Promise<void> {
+  const upper = code.trim().toUpperCase();
+  saveLocalParticipatedCode(upper);
+  const user = auth.currentUser;
+  if (user && !user.isAnonymous) {
+    try {
+      await setDoc(
+        doc(db, 'users', user.uid, 'participations', upper),
+        { code: upper, participatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('[recordChallengeParticipation error]', e);
+    }
+  }
+}
+
+export function subscribeUserChallenges(
+  uid: string | null,
+  callback: (challenges: UserChallengeItem[]) => void
+): () => void {
+  let createdList: ChallengeDoc[] = [];
+  const participatedCodes = new Set<string>(getLocalParticipatedCodes());
+  let unsubCreated: (() => void) | null = null;
+  let unsubParticipated: (() => void) | null = null;
+  let isMounted = true;
+
+  const emitMerged = async () => {
+    if (!isMounted) return;
+    const itemsMap = new Map<string, UserChallengeItem>();
+
+    // 1. Add created challenges
+    for (const ch of createdList) {
+      itemsMap.set(ch.id, { ...ch, relation: 'created' });
+    }
+
+    // 2. Add participated challenges
+    const fetchPromises: Promise<ChallengeDoc | null>[] = [];
+    for (const code of participatedCodes) {
+      if (!itemsMap.has(code)) {
+        fetchPromises.push(getChallenge(code));
+      }
+    }
+
+    if (fetchPromises.length > 0) {
+      const fetched = await Promise.all(fetchPromises);
+      if (!isMounted) return;
+      fetched.forEach((ch) => {
+        if (ch) {
+          itemsMap.set(ch.id, { ...ch, relation: 'participated' });
+        }
+      });
+    }
+
+    const merged = Array.from(itemsMap.values());
+    merged.sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+    callback(merged);
+  };
+
+  if (uid) {
+    const qCreated = query(
+      collection(db, 'challenges'),
+      where('createdBy', '==', uid)
+    );
+
+    unsubCreated = onSnapshot(
+      qCreated,
+      (snapshot) => {
+        createdList = [];
+        snapshot.forEach(docSnap => {
+          createdList.push(docSnap.data() as ChallengeDoc);
+        });
+        emitMerged();
+      },
+      (err) => console.error('[subscribeCreatedChallenges error]', err)
+    );
+
+    const qPart = collection(db, 'users', uid, 'participations');
+    unsubParticipated = onSnapshot(
+      qPart,
+      (snapshot) => {
+        snapshot.forEach(docSnap => {
+          participatedCodes.add(docSnap.id.toUpperCase());
+        });
+        emitMerged();
+      },
+      (err) => console.error('[subscribeParticipatedChallenges error]', err)
+    );
+  } else {
+    emitMerged();
+  }
+
+  return () => {
+    isMounted = false;
+    if (unsubCreated) unsubCreated();
+    if (unsubParticipated) unsubParticipated();
+  };
+}
+
 export function subscribeMyChallenges(
   uid: string,
   callback: (challenges: ChallengeDoc[]) => void
@@ -325,6 +454,7 @@ export async function submitChallengeScore(params: {
     // Only overwrite if new score is higher, or equal score with faster time
     if (existing.score > totalScore || (existing.score === totalScore && existing.totalTimeMs <= totalTimeMs)) {
       await setDoc(scoreRef, { attempts }, { merge: true });
+      await recordChallengeParticipation(params.code);
       return { ...existing, attempts };
     }
   }
@@ -343,6 +473,7 @@ export async function submitChallengeScore(params: {
   };
 
   await setDoc(scoreRef, newEntry);
+  await recordChallengeParticipation(params.code);
   return newEntry;
 }
 

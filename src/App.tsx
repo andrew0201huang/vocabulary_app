@@ -25,12 +25,14 @@ import { CreateOnlineChallengeModal } from './components/challenge/CreateOnlineC
 import { ChallengeLobbyModal } from './components/challenge/ChallengeLobbyModal';
 import {
   ChallengeDoc,
+  UserChallengeItem,
   CurrentPlayer,
   subscribeAuth,
   getChallenge,
   importChallengeWords,
   submitChallengeScore,
-  subscribeMyChallenges,
+  subscribeUserChallenges,
+  recordChallengeParticipation,
   loginWithGoogle,
   logoutFirebase,
 } from './services/firebaseChallengeService';
@@ -114,7 +116,7 @@ export const App: React.FC = () => {
     onlineChallengeId?: string;
   } | null>(null);
 
-  const [myChallenges, setMyChallenges] = useState<ChallengeDoc[]>([]);
+  const [challengeList, setChallengeList] = useState<UserChallengeItem[]>([]);
 
   // Subscribe to Firebase Auth for challenges and global identity
   useEffect(() => {
@@ -127,16 +129,13 @@ export const App: React.FC = () => {
     return () => unsub();
   }, [loginLocal]);
 
-  // Subscribe to user's created challenges when logged in with Google
+  // Subscribe to user's created and participated challenges
   useEffect(() => {
-    if (currentPlayer && !currentPlayer.isAnonymous) {
-      const unsub = subscribeMyChallenges(currentPlayer.uid, (list) => {
-        setMyChallenges(list);
-      });
-      return () => unsub();
-    } else {
-      setMyChallenges([]);
-    }
+    const uid = currentPlayer && !currentPlayer.isAnonymous ? currentPlayer.uid : null;
+    const unsub = subscribeUserChallenges(uid, (list) => {
+      setChallengeList(list);
+    });
+    return () => unsub();
   }, [currentPlayer]);
 
   // Listen to hash routes (#/s/... and #/c/CODE)
@@ -159,6 +158,7 @@ export const App: React.FC = () => {
           try {
             const ch = await getChallenge(code);
             if (ch) {
+              recordChallengeParticipation(ch.id);
               setActiveOnlineChallenge(ch);
             } else {
               addToast('error', '找不到競賽', `查無競賽代碼「${code}」`);
@@ -177,6 +177,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleStartOnlineChallenge = (ch: ChallengeDoc) => {
+    recordChallengeParticipation(ch.id);
     const { words: merged, wordIds, addedCount } = importChallengeWords(words, ch);
     replaceAllWords(merged);
     setActiveOnlineChallenge(null);
@@ -209,6 +210,7 @@ export const App: React.FC = () => {
     try {
       const ch = await getChallenge(code.trim().toUpperCase());
       if (ch) {
+        recordChallengeParticipation(ch.id);
         setActiveOnlineChallenge(ch);
       } else {
         addToast('error', '查無競賽', `找不到代碼「${code.trim().toUpperCase()}」的競賽`);
@@ -508,7 +510,23 @@ export const App: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => setOnlineChallengeTag(stats.allTags[0] || '國小必備')}
+                  onClick={async () => {
+                    if (!currentPlayer || currentPlayer.isAnonymous) {
+                      addToast('info', '請先登入 Google 帳號', '只有使用 Google 帳號登入才可發起競賽');
+                      try {
+                        await handleUnifiedGoogleLogin();
+                        setOnlineChallengeTag(stats.allTags[0] || '國小必備');
+                      } catch {
+                        // user cancelled login
+                      }
+                      return;
+                    }
+                    if (words.length === 0) {
+                      addToast('error', '字庫無單字', '請先新增單字或匯入預設題庫後再發起競賽');
+                      return;
+                    }
+                    setOnlineChallengeTag(stats.allTags[0] || '國小必備');
+                  }}
                   className="w-full py-2.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 shadow-sm transition-all"
                   style={{ background: 'var(--accent)' }}
                 >
@@ -539,15 +557,15 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* My Created Challenges Section */}
+            {/* Unified Challenge List Section */}
             <div className="mt-2 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold flex items-center gap-1.5 text-slate-800">
                   <Trophy className="w-4 h-4 text-amber-500" />
-                  我發起的競賽列表
-                  {myChallenges.length > 0 && (
+                  競賽列表
+                  {challengeList.length > 0 && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-normal text-slate-600">
-                      {myChallenges.length}
+                      {challengeList.length}
                     </span>
                   )}
                 </h3>
@@ -556,7 +574,7 @@ export const App: React.FC = () => {
                     onClick={handleUnifiedGoogleLogin}
                     className="text-xs font-semibold text-indigo-600 hover:underline"
                   >
-                    登入 Google 查看我的競賽
+                    登入 Google 同步紀錄
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -573,29 +591,25 @@ export const App: React.FC = () => {
                 )}
               </div>
 
-              {(!currentPlayer || currentPlayer.isAnonymous) ? (
+              {challengeList.length === 0 ? (
                 <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50 flex flex-col items-center gap-2.5">
                   <p className="max-w-md">
-                    {currentPlayer?.isAnonymous
-                      ? `您目前是以「${currentPlayer.displayName}（匿名身分）」參賽。`
-                      : '尚未登入 Google 帳號。'}
-                    若要「發起新競賽」或「在不同裝置管理查看自己發起的競賽清單」，請先登入 Google 帳號。
+                    目前尚未有任何發起或參加過的競賽紀錄。您可以輸入邀請碼加入競賽，或點擊上方「發起標籤競賽」邀請好友！
                   </p>
-                  <button
-                    onClick={handleUnifiedGoogleLogin}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all"
-                  >
-                    立即使用 Google 帳號登入
-                  </button>
-                </div>
-              ) : myChallenges.length === 0 ? (
-                <div className="p-6 rounded-2xl border border-dashed text-center text-xs text-slate-500 bg-slate-50/50">
-                  您目前尚未發起過任何競賽。點擊上方「發起標籤競賽」即可開始！
+                  {(!currentPlayer || currentPlayer.isAnonymous) && (
+                    <button
+                      onClick={handleUnifiedGoogleLogin}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all"
+                    >
+                      登入 Google 帳號發起新競賽
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {myChallenges.map((ch) => {
+                  {challengeList.map((ch) => {
                     const isExpired = ch.endsAt ? new Date().getTime() > new Date(ch.endsAt).getTime() : false;
+                    const isMyCreation = ch.relation === 'created';
                     return (
                       <div
                         key={ch.id}
@@ -603,12 +617,21 @@ export const App: React.FC = () => {
                         className="p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer hover:bg-indigo-50/50 hover:border-indigo-200 transition-all shadow-sm"
                         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
                       >
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-sm text-slate-900">{ch.title}</span>
                             <span className="text-xs px-2 py-0.5 rounded-md font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
                               {ch.id}
                             </span>
+                            {isMyCreation ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                由我發起
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                已參加 ({ch.creatorName})
+                              </span>
+                            )}
                           </div>
                           <span className="text-xs text-slate-500">
                             標籤「{ch.tag}」・{ch.words.length} 個單字・
@@ -620,7 +643,7 @@ export const App: React.FC = () => {
                           type="button"
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 shrink-0"
                         >
-                          查看排行榜
+                          查看榜單
                         </button>
                       </div>
                     );
