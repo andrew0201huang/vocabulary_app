@@ -11,6 +11,7 @@ import { VoiceInput } from './VoiceInput';
 import { WhisperVoiceInput } from './WhisperVoiceInput';
 import { normalizeWord } from '../../utils/textUtils';
 import { dbg } from '../../utils/debugLogger';
+import { seededOrder } from '../../services/shareService';
 
 interface TestingViewProps {
   config: RoundConfig;
@@ -138,7 +139,11 @@ export const TestingView: React.FC<TestingViewProps> = ({
       ...familiarList,
     ];
 
-    const selected = prioritizedCandidates.slice(0, Math.min(prioritizedCandidates.length, config.wordCount));
+    const ordered = config.seed !== undefined
+      ? seededOrder(candidateWords, config.seed)
+      : prioritizedCandidates;
+
+    const selected = ordered.slice(0, Math.min(ordered.length, config.wordCount));
 
     const initialQueue: TestQueueItem[] = selected.map(word => ({
       word,

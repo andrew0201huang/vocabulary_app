@@ -36,6 +36,10 @@ export interface RoundConfig {
   filterMode: 'all' | 'due' | 'struggling' | 'new' | 'elementary' | 'junior_high' | 'custom_tag';
   customTag?: string;
   wordIds?: string[];          // If set, ignore filterMode and use only these word IDs
+  seed?: number;               // Challenge mode: fixed deterministic word order (skips smart sampling)
+  challengeTitle?: string;     // Challenge mode: shown in the result screen
+  challengeSlowMs?: number;    // Challenge mode: speed threshold for scoring
+  onlineChallengeId?: string;  // Online challenge code (e.g. K7Q2XM) for cloud leaderboard score upload
   inputMode: InputMode;
   autoPlayAudio: boolean;
   showPhoneticHint: boolean;

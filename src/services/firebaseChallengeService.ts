@@ -1,0 +1,347 @@
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
+  signInAnonymously,
+  GoogleAuthProvider,
+  signInWithPopup,
+  updateProfile,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { WordItem, RoundSummary } from '../types/vocabulary';
+import { createWordItemFromPreset } from '../data/sampleData';
+
+const firebaseConfig = {
+  projectId: "vocab-speed-challenge-2026",
+  appId: "1:336093461885:web:5643e1e06805e415eb6014",
+  storageBucket: "vocab-speed-challenge-2026.firebasestorage.app",
+  apiKey: "AIzaSyBXxTAYku1_NKmyMLCQO5rMEVFJT7GX1eI",
+  authDomain: "vocab-speed-challenge-2026.firebaseapp.com",
+  messagingSenderId: "336093461885",
+};
+
+// Initialize Firebase
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// Data Interfaces
+export interface ChallengeDoc {
+  id: string;               // 6-character code e.g. "K7Q2XM"
+  title: string;
+  tag: string;
+  createdBy: string;
+  creatorName: string;
+  startsAt: string;          // ISO string
+  endsAt: string | null;     // ISO string (null for unlimited)
+  words: Array<{
+    word: string;
+    translation: string;
+    phonetic?: string;
+    pos?: string;
+    exampleEn?: string;
+    exampleZh?: string;
+  }>;
+  seed: number;
+  slowMs: number;
+  chineseDelaySeconds: number;
+  createdAt: any;
+}
+
+export interface LeaderboardEntry {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  score: number;
+  accuracy: number;
+  totalTimeMs: number;
+  correctCount: number;
+  totalQuestions: number;
+  attempts: number;
+  updatedAt: any;
+}
+
+export interface CurrentPlayer {
+  uid: string;
+  displayName: string;
+  isAnonymous: boolean;
+  photoURL?: string | null;
+}
+
+// ── Auth helpers ─────────────────────────────────────────────────────────────
+
+export function subscribeAuth(callback: (player: CurrentPlayer | null) => void) {
+  return onAuthStateChanged(auth, (user: User | null) => {
+    if (!user) {
+      callback(null);
+    } else {
+      const storedName = localStorage.getItem('speedvocab_player_name');
+      const name = user.displayName || storedName || (user.isAnonymous ? '匿名挑戰者' : '挑戰玩家');
+      callback({
+        uid: user.uid,
+        displayName: name,
+        isAnonymous: user.isAnonymous,
+        photoURL: user.photoURL,
+      });
+    }
+  });
+}
+
+export async function loginAnonymouslyWithNickname(nickname: string): Promise<CurrentPlayer> {
+  const cred = await signInAnonymously(auth);
+  const cleanName = nickname.trim() || '匿名挑戰者';
+  if (cred.user) {
+    try {
+      await updateProfile(cred.user, { displayName: cleanName });
+    } catch {
+      // ignore
+    }
+  }
+  localStorage.setItem('speedvocab_player_name', cleanName);
+  return {
+    uid: cred.user.uid,
+    displayName: cleanName,
+    isAnonymous: true,
+  };
+}
+
+export async function loginWithGoogle(): Promise<CurrentPlayer> {
+  const provider = new GoogleAuthProvider();
+  const cred = await signInWithPopup(auth, provider);
+  const user = cred.user;
+  const name = user.displayName || 'Google 玩家';
+  localStorage.setItem('speedvocab_player_name', name);
+  return {
+    uid: user.uid,
+    displayName: name,
+    isAnonymous: false,
+    photoURL: user.photoURL,
+  };
+}
+
+// ── Challenge Code Generation ────────────────────────────────────────────────
+
+function generateChallengeCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// ── Challenge Firestore APIs ─────────────────────────────────────────────────
+
+export async function createOnlineChallenge(params: {
+  title: string;
+  tag: string;
+  words: WordItem[];
+  durationDays: number | null; // 7 for 1 week, null for unlimited
+  slowMs?: number;
+  chineseDelaySeconds?: number;
+}): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    await signInAnonymously(auth);
+  }
+  const currentUser = auth.currentUser!;
+  const storedName = localStorage.getItem('speedvocab_player_name') || '挑戰發起人';
+
+  const code = generateChallengeCode();
+  const tagWords = params.words
+    .filter(w => w.tags.includes(params.tag))
+    .map(w => ({
+      word: w.word,
+      translation: w.translation,
+      phonetic: w.phonetic || '',
+      pos: w.pos || '',
+      exampleEn: w.exampleEn || '',
+      exampleZh: w.exampleZh || '',
+    }));
+
+  if (tagWords.length === 0) {
+    throw new Error('此標籤內沒有單字可供競賽');
+  }
+
+  const now = new Date();
+  const startsAt = now.toISOString();
+  let endsAt: string | null = null;
+  if (params.durationDays && params.durationDays > 0) {
+    const end = new Date(now.getTime() + params.durationDays * 24 * 60 * 60 * 1000);
+    endsAt = end.toISOString();
+  }
+
+  const challengeData: ChallengeDoc = {
+    id: code,
+    title: params.title.trim() || params.tag,
+    tag: params.tag,
+    createdBy: currentUser.uid,
+    creatorName: currentUser.displayName || storedName,
+    startsAt,
+    endsAt,
+    words: tagWords,
+    seed: Math.floor(Math.random() * 2 ** 31),
+    slowMs: params.slowMs ?? 15000,
+    chineseDelaySeconds: params.chineseDelaySeconds ?? 10,
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(db, 'challenges', code), challengeData);
+  return code;
+}
+
+export async function getChallenge(code: string): Promise<ChallengeDoc | null> {
+  const snap = await getDoc(doc(db, 'challenges', code.toUpperCase()));
+  if (!snap.exists()) return null;
+  return snap.data() as ChallengeDoc;
+}
+
+export function subscribeLeaderboard(
+  code: string,
+  callback: (entries: LeaderboardEntry[]) => void
+) {
+  const q = query(
+    collection(db, 'challenges', code.toUpperCase(), 'scores'),
+    orderBy('score', 'desc'),
+    orderBy('totalTimeMs', 'asc'),
+    limit(50)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const list: LeaderboardEntry[] = [];
+    snapshot.forEach(docSnap => {
+      list.push(docSnap.data() as LeaderboardEntry);
+    });
+    callback(list);
+  });
+}
+
+export async function submitChallengeScore(params: {
+  code: string;
+  summary: RoundSummary;
+  challenge: ChallengeDoc;
+  displayName: string;
+}): Promise<LeaderboardEntry> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('尚未登入參賽身分');
+
+  const now = new Date();
+  if (params.challenge.endsAt && now.getTime() > new Date(params.challenge.endsAt).getTime()) {
+    throw new Error('本場競賽已結束，無法再上傳成績');
+  }
+
+  // Calculate score (only first attempts count, wrong=0, correct=100 + bonus)
+  const firstAttempts = new Map<string, RoundSummary['results'][number]>();
+  for (const r of params.summary.results) {
+    if (r.isRetry) continue;
+    if (!firstAttempts.has(r.wordId)) firstAttempts.set(r.wordId, r);
+  }
+
+  let totalScore = 0;
+  let correctCount = 0;
+  let totalTimeMs = 0;
+  firstAttempts.forEach(r => {
+    totalTimeMs += r.responseTimeMs;
+    if (r.isCorrect) {
+      correctCount++;
+      const bonus = Math.max(0, 1 - r.responseTimeMs / Math.max(1, params.challenge.slowMs));
+      totalScore += 100 + Math.round(100 * bonus);
+    }
+  });
+
+  const totalQuestions = firstAttempts.size;
+  const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+
+  const scoreRef = doc(db, 'challenges', params.code.toUpperCase(), 'scores', user.uid);
+  const existingSnap = await getDoc(scoreRef);
+
+  let attempts = 1;
+  if (existingSnap.exists()) {
+    const existing = existingSnap.data() as LeaderboardEntry;
+    attempts = (existing.attempts || 1) + 1;
+    // Only overwrite if new score is higher, or equal score with faster time
+    if (existing.score > totalScore || (existing.score === totalScore && existing.totalTimeMs <= totalTimeMs)) {
+      await setDoc(scoreRef, { attempts }, { merge: true });
+      return { ...existing, attempts };
+    }
+  }
+
+  const newEntry: LeaderboardEntry = {
+    uid: user.uid,
+    displayName: params.displayName || user.displayName || '挑戰者',
+    photoURL: user.photoURL || undefined,
+    score: totalScore,
+    accuracy,
+    totalTimeMs,
+    correctCount,
+    totalQuestions,
+    attempts,
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(scoreRef, newEntry);
+  return newEntry;
+}
+
+/**
+ * Merge challenge words into player's local word bank
+ */
+export function importChallengeWords(
+  existingWords: WordItem[],
+  challenge: ChallengeDoc
+): { words: WordItem[]; wordIds: string[]; addedCount: number } {
+  const byWord = new Map(existingWords.map(w => [w.word.toLowerCase(), w]));
+  const result = [...existingWords];
+  const wordIds: string[] = [];
+  let addedCount = 0;
+  const now = new Date().toISOString();
+
+  for (const cw of challenge.words) {
+    const key = cw.word.trim().toLowerCase();
+    const found = byWord.get(key);
+    if (found) {
+      const idx = result.findIndex(w => w.id === found.id);
+      const updated: WordItem = {
+        ...found,
+        tags: found.tags.includes(challenge.tag) ? found.tags : [...found.tags, challenge.tag],
+        translation: found.translation || cw.translation,
+        phonetic: found.phonetic || cw.phonetic,
+        pos: found.pos || cw.pos,
+        exampleEn: found.exampleEn || cw.exampleEn,
+        exampleZh: found.exampleZh || cw.exampleZh,
+        updatedAt: now,
+      };
+      result[idx] = updated;
+      byWord.set(key, updated);
+      wordIds.push(updated.id);
+    } else {
+      const item = createWordItemFromPreset({
+        word: cw.word,
+        translation: cw.translation,
+        phonetic: cw.phonetic,
+        pos: cw.pos,
+        exampleEn: cw.exampleEn,
+        exampleZh: cw.exampleZh,
+        tags: [challenge.tag],
+      });
+      result.push(item);
+      byWord.set(key, item);
+      wordIds.push(item.id);
+      addedCount++;
+    }
+  }
+
+  return { words: result, wordIds, addedCount };
+}

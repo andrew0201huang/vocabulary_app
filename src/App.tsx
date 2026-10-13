@@ -18,6 +18,26 @@ import { useAuth } from './hooks/useAuth';
 import { RoundConfig, RoundSummary, WordItem } from './types/vocabulary';
 import { storageService } from './services/storageService';
 import { speechService } from './services/speechService';
+import { ShareTagModal } from './components/share/ShareTagModal';
+import { SharedPackModal } from './components/share/SharedPackModal';
+import { CreateOnlineChallengeModal } from './components/challenge/CreateOnlineChallengeModal';
+import { ChallengeLobbyModal } from './components/challenge/ChallengeLobbyModal';
+import {
+  ChallengeDoc,
+  CurrentPlayer,
+  subscribeAuth,
+  getChallenge,
+  importChallengeWords,
+  submitChallengeScore,
+} from './services/firebaseChallengeService';
+import {
+  SharedPack,
+  ChallengeScore,
+  decodePackFromHash,
+  clearShareHash,
+  importPack,
+  computeChallengeScore,
+} from './services/shareService';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('test');
@@ -79,21 +99,180 @@ export const App: React.FC = () => {
     }
   }, [settings.googleClientId, authState.authType]);
 
+  // ── Sharing / challenge links (#/s/... and #/c/...) ──
+  const [sharedPack, setSharedPack] = useState<SharedPack | null>(null);
+  const [shareTag, setShareTag] = useState<string | null>(null);
+  const [onlineChallengeTag, setOnlineChallengeTag] = useState<string | null>(null);
+  const [activeOnlineChallenge, setActiveOnlineChallenge] = useState<ChallengeDoc | null>(null);
+  const [currentPlayer, setCurrentPlayer] = useState<CurrentPlayer | null>(null);
+  const [lastChallenge, setLastChallenge] = useState<{
+    title: string;
+    score: ChallengeScore;
+    onlineChallengeId?: string;
+  } | null>(null);
+
+  // Subscribe to Firebase Auth for challenges
+  useEffect(() => {
+    const unsub = subscribeAuth((player) => {
+      setCurrentPlayer(player);
+    });
+    return () => unsub();
+  }, []);
+
+  // Listen to hash routes (#/s/... and #/c/CODE)
+  useEffect(() => {
+    const checkHash = async () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+
+      if (hash.startsWith('#/s/')) {
+        try {
+          const pack = decodePackFromHash(hash);
+          if (pack) setSharedPack(pack);
+        } catch (e) {
+          addToast('error', '分享連結無法讀取', '連結可能不完整，請重新複製');
+        }
+        clearShareHash();
+      } else if (hash.startsWith('#/c/')) {
+        const code = hash.slice(4).trim().toUpperCase();
+        if (code) {
+          try {
+            const ch = await getChallenge(code);
+            if (ch) {
+              setActiveOnlineChallenge(ch);
+            } else {
+              addToast('error', '找不到競賽', `查無競賽代碼「${code}」`);
+            }
+          } catch (e: any) {
+            addToast('error', '讀取競賽失敗', e.message);
+          }
+        }
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    };
+
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
+  const handleStartOnlineChallenge = (ch: ChallengeDoc) => {
+    const { words: merged, wordIds, addedCount } = importChallengeWords(words, ch);
+    replaceAllWords(merged);
+    setActiveOnlineChallenge(null);
+    setIsTestingActive(false);
+    setActiveTab('test');
+
+    if (addedCount > 0) {
+      addToast('info', '題庫已載入', `已將 ${addedCount} 個競賽單字匯入至您的「${ch.tag}」標籤庫`);
+    }
+
+    handleStartRound({
+      wordCount: wordIds.length,
+      filterMode: 'all',
+      wordIds,
+      seed: ch.seed,
+      challengeTitle: ch.title,
+      challengeSlowMs: ch.slowMs,
+      onlineChallengeId: ch.id,
+      inputMode: 'keyboard',
+      autoPlayAudio: true,
+      showPhoneticHint: false,
+      handwritingSelfGrade: false,
+      chineseDelaySeconds: ch.chineseDelaySeconds,
+    });
+  };
+
+  const handleOpenChallengeByPrompt = async () => {
+    const code = prompt('請輸入 6 碼競賽邀請碼 (例: K7Q2XM)：');
+    if (!code || !code.trim()) return;
+    try {
+      const ch = await getChallenge(code.trim().toUpperCase());
+      if (ch) {
+        setActiveOnlineChallenge(ch);
+      } else {
+        addToast('error', '查無競賽', `找不到代碼「${code.trim().toUpperCase()}」的競賽`);
+      }
+    } catch (err: any) {
+      addToast('error', '查詢失敗', err.message);
+    }
+  };
+
+  const handleImportPack = (pack: SharedPack, startChallenge: boolean) => {
+    const { words: merged, packWordIds, addedCount } = importPack(words, pack);
+    replaceAllWords(merged);
+    setSharedPack(null);
+    addToast('success', `已匯入「${pack.title}」`, `新增 ${addedCount} 個單字，共 ${packWordIds.length} 個加入標籤「${pack.tag}」`);
+    if (startChallenge && pack.challenge) {
+      setIsTestingActive(false);
+      setActiveTab('test');
+      handleStartRound({
+        wordCount: packWordIds.length,
+        filterMode: 'all',
+        wordIds: packWordIds,
+        seed: pack.challenge.seed,
+        challengeTitle: pack.title,
+        challengeSlowMs: pack.challenge.slowMs,
+        inputMode: 'keyboard',
+        autoPlayAudio: true,
+        showPhoneticHint: false,
+        handwritingSelfGrade: false,
+        chineseDelaySeconds: pack.challenge.chineseDelaySeconds,
+      });
+    } else {
+      setActiveTab('bank');
+    }
+  };
+
   // Start Test Round Handlers
   const handleStartRound = (config: RoundConfig) => {
-    // iOS: unlock audio engine here — this runs inside a user-gesture (button click),
-    // so subsequent auto-play calls from useEffect will work too.
     speechService.unlockIOSAudio();
     setRoundConfig(config);
     setIsTestingActive(true);
     setLastRoundSummary(null);
+    setLastChallenge(null);
   };
 
-  const handleFinishRound = (summary: RoundSummary, updatedWords: WordItem[]) => {
+  const handleFinishRound = async (summary: RoundSummary, updatedWords: WordItem[]) => {
     recordRound(summary, updatedWords);
     setLastRoundSummary(summary);
     setIsTestingActive(false);
-    addToast('success', '回合測驗完成！', '學習進度與反應時間已自動儲存');
+
+    if (roundConfig?.seed !== undefined) {
+      const score = computeChallengeScore(summary, {
+        seed: roundConfig.seed,
+        slowMs: roundConfig.challengeSlowMs ?? 15000,
+        chineseDelaySeconds: roundConfig.chineseDelaySeconds,
+      });
+
+      setLastChallenge({
+        title: roundConfig.challengeTitle || '挑戰',
+        score,
+        onlineChallengeId: roundConfig.onlineChallengeId,
+      });
+
+      // If this was an online challenge with Firestore leaderboard, upload the score
+      if (roundConfig.onlineChallengeId) {
+        try {
+          const ch = await getChallenge(roundConfig.onlineChallengeId);
+          if (ch) {
+            const playerName = currentPlayer?.displayName || localStorage.getItem('speedvocab_player_name') || '挑戰者';
+            await submitChallengeScore({
+              code: roundConfig.onlineChallengeId,
+              summary,
+              challenge: ch,
+              displayName: playerName,
+            });
+            addToast('success', '成績已登錄雲端排行榜！', `目前得分：${score.score} 分`);
+          }
+        } catch (err: any) {
+          console.error(err);
+          addToast('error', '排行榜上傳未完成', err.message);
+        }
+      }
+    }
+
+    addToast('success', '回合測驗完成！', '學習進度與反應時間已自動儲存至您的單字庫');
   };
 
   const handleExitTesting = () => {
@@ -201,11 +380,20 @@ export const App: React.FC = () => {
               <RoundResultView
                 summary={lastRoundSummary}
                 settings={settings}
+                challenge={lastChallenge}
                 onRetryStruggling={handleRetryStruggling}
                 onStartNewRound={() => setIsSetupModalOpen(true)}
                 onGoToBank={() => {
                   setLastRoundSummary(null);
                   setActiveTab('bank');
+                }}
+                onOpenLeaderboard={async (code) => {
+                  try {
+                    const ch = await getChallenge(code);
+                    if (ch) setActiveOnlineChallenge(ch);
+                  } catch (e: any) {
+                    addToast('error', '讀取排行榜失敗', e.message);
+                  }
                 }}
               />
             ) : (
@@ -216,6 +404,7 @@ export const App: React.FC = () => {
                 onOpenSetupModal={() => setIsSetupModalOpen(true)}
                 onQuickStart={handleStartRound}
                 onGoToBank={() => setActiveTab('bank')}
+                onEnterChallengeCode={handleOpenChallengeByPrompt}
               />
             )}
           </>
@@ -257,6 +446,8 @@ export const App: React.FC = () => {
               });
               setActiveTab('test');
             }}
+            onShareTag={(tag) => setShareTag(tag)}
+            onStartOnlineChallenge={(tag) => setOnlineChallengeTag(tag)}
           />
         )}
 
@@ -385,6 +576,45 @@ export const App: React.FC = () => {
           storageService.resetAllData();
           addToast('info', '資料已重設為初始狀態');
         }}
+      />
+
+      <ShareTagModal
+        isOpen={!!shareTag}
+        onClose={() => setShareTag(null)}
+        tag={shareTag || ''}
+        words={words}
+        settings={settings}
+        onToast={addToast}
+      />
+
+      <SharedPackModal
+        pack={sharedPack}
+        onClose={() => setSharedPack(null)}
+        onImport={handleImportPack}
+      />
+
+      <CreateOnlineChallengeModal
+        isOpen={!!onlineChallengeTag}
+        onClose={() => setOnlineChallengeTag(null)}
+        tag={onlineChallengeTag || ''}
+        allTags={stats.allTags}
+        words={words}
+        settings={settings}
+        onToast={addToast}
+        onChallengeCreated={async (code) => {
+          setOnlineChallengeTag(null);
+          const ch = await getChallenge(code);
+          if (ch) setActiveOnlineChallenge(ch);
+        }}
+      />
+
+      <ChallengeLobbyModal
+        challenge={activeOnlineChallenge}
+        isOpen={!!activeOnlineChallenge}
+        onClose={() => setActiveOnlineChallenge(null)}
+        currentPlayer={currentPlayer}
+        onStartChallenge={handleStartOnlineChallenge}
+        onToast={addToast}
       />
 
       {/* Toast Notifications */}

@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Play, BookOpen, Volume2, Flame, RotateCcw } from 'lucide-react';
+import { Trophy, Play, BookOpen, Volume2, Flame, RotateCcw, Share2 } from 'lucide-react';
 import { RoundSummary, AppSettings } from '../../types/vocabulary';
 import { formatSeconds } from '../../utils/timeUtils';
 import { getSpeedCategory } from '../../services/spacedRepetition';
 import { getFamiliarityBadge } from '../../utils/textUtils';
 import { useSpeech } from '../../hooks/useSpeech';
+import { ChallengeScore, shareOrCopy } from '../../services/shareService';
 
 interface RoundResultViewProps {
   summary: RoundSummary;
@@ -13,6 +14,8 @@ interface RoundResultViewProps {
   onRetryStruggling: (wordIds: string[]) => void;
   onStartNewRound: () => void;
   onGoToBank: () => void;
+  challenge?: { title: string; score: ChallengeScore; onlineChallengeId?: string } | null;
+  onOpenLeaderboard?: (code: string) => void;
 }
 
 export const RoundResultView: React.FC<RoundResultViewProps> = ({
@@ -21,6 +24,8 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
   onRetryStruggling,
   onStartNewRound,
   onGoToBank,
+  challenge,
+  onOpenLeaderboard,
 }) => {
   const { speak } = useSpeech(settings);
 
@@ -59,6 +64,40 @@ export const RoundResultView: React.FC<RoundResultViewProps> = ({
         <p className="text-sm text-slate-700">
           所有學習進度與拼寫反應時間已自動計算並同步至本地及雲端。
         </p>
+
+        {challenge && (
+          <div className="w-full mt-2 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center gap-2">
+            <span className="text-xs font-medium text-amber-700">挑戰「{challenge.title}」得分</span>
+            <span className="text-4xl font-extrabold text-amber-600">
+              {challenge.score.score}
+              <span className="text-base font-medium text-amber-500"> / {challenge.score.maxScore}</span>
+            </span>
+            <span className="text-xs text-amber-700">
+              答對 {challenge.score.correct}/{challenge.score.total}・總時間 {formatSeconds(challenge.score.totalTimeMs)}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              {challenge.onlineChallengeId && onOpenLeaderboard && (
+                <button
+                  onClick={() => onOpenLeaderboard(challenge.onlineChallengeId!)}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+                >
+                  <Trophy className="w-4 h-4" />查看雲端排行榜
+                </button>
+              )}
+              <button
+                onClick={async () => {
+                  const s = challenge.score;
+                  const text = `我在「${challenge.title}」挑戰拿到 ${s.score} 分（答對 ${s.correct}/${s.total}，總時間 ${formatSeconds(s.totalTimeMs)}）！`;
+                  const r = await shareOrCopy(text);
+                  if (r === 'copied') alert('成績已複製，可以貼到群組比一比！');
+                }}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+              >
+                <Share2 className="w-4 h-4" />分享成績
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 4 Stat Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full mt-3">
