@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, ClipboardPaste, BookMarked, Volume2, Edit2, Trash2, RotateCcw, Sparkles, Share2, Trophy } from 'lucide-react';
+import { Search, Plus, ClipboardPaste, BookMarked, Volume2, Edit2, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { WordItem, FamiliarityLevel, AppSettings } from '../../types/vocabulary';
 import { getFamiliarityBadge } from '../../utils/textUtils';
 import { formatSeconds } from '../../utils/timeUtils';
@@ -17,8 +17,6 @@ interface WordBankViewProps {
   onDeleteWord: (id: string) => void;
   onResetWordProgress: (id: string) => void;
   onStartRoundWithFiltered: (filteredWords: WordItem[]) => void;
-  onShareTag?: (tag: string) => void;
-  onStartOnlineChallenge?: (tag: string) => void;
 }
 
 const FAMILIARITY_TABS: { key: FamiliarityLevel | 'all' | 'due'; label: string }[] = [
@@ -50,8 +48,6 @@ export const WordBankView: React.FC<WordBankViewProps> = ({
   onDeleteWord,
   onResetWordProgress,
   onStartRoundWithFiltered,
-  onShareTag,
-  onStartOnlineChallenge,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFamiliarity, setSelectedFamiliarity] = useState<FamiliarityLevel | 'all' | 'due'>('all');
@@ -138,16 +134,6 @@ export const WordBankView: React.FC<WordBankViewProps> = ({
             <ClipboardPaste className="w-4 h-4" style={{ color: 'var(--accent)' }} />
             批次貼上
           </button>
-          {onStartOnlineChallenge && (
-            <button
-              onClick={() => onStartOnlineChallenge(selectedTag !== 'all' ? selectedTag : (allTags[0] ?? ''))}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[.97] text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300"
-              title="發起此標籤（或自選標籤）的排行榜競賽"
-            >
-              <Trophy className="w-4 h-4 text-amber-500" />
-              發起排行榜競賽
-            </button>
-          )}
           <button
             onClick={onImportExport}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -250,25 +236,6 @@ export const WordBankView: React.FC<WordBankViewProps> = ({
             {filteredWords.length} 個結果
           </span>
           <div className="flex items-center gap-3">
-            {selectedTag !== 'all' && onStartOnlineChallenge && (
-              <button
-                onClick={() => onStartOnlineChallenge(selectedTag)}
-                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors"
-              >
-                <Trophy className="w-3.5 h-3.5" />
-                發起排行榜競賽
-              </button>
-            )}
-            {selectedTag !== 'all' && onShareTag && (
-              <button
-                onClick={() => onShareTag(selectedTag)}
-                className="flex items-center gap-1 text-xs font-medium transition-colors"
-                style={{ color: 'var(--accent)' }}
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                快速分享
-              </button>
-            )}
             <button
               onClick={() => onStartRoundWithFiltered(filteredWords)}
               className="flex items-center gap-1 text-xs font-medium transition-colors"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Clock, RotateCcw, BookOpen, Trophy } from 'lucide-react';
+import { Play, Clock, RotateCcw, BookOpen } from 'lucide-react';
 import { WordItem, RoundSummary, AppSettings, RoundConfig } from '../../types/vocabulary';
 import { formatSeconds, formatRelativeTime } from '../../utils/timeUtils';
 import { isWordDueForReview } from '../../services/spacedRepetition';
@@ -11,7 +11,6 @@ interface TestDashboardProps {
   onOpenSetupModal: () => void;
   onQuickStart: (config: RoundConfig) => void;
   onGoToBank: () => void;
-  onEnterChallengeCode?: () => void;
 }
 
 export const TestDashboard: React.FC<TestDashboardProps> = ({
@@ -20,7 +19,6 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
   settings,
   onOpenSetupModal,
   onQuickStart,
-  onEnterChallengeCode,
 }) => {
   const dueWords       = words.filter(isWordDueForReview);
   const strugglingWords = words.filter(w => w.familiarity === 'struggling');
@@ -101,16 +99,6 @@ export const TestDashboard: React.FC<TestDashboardProps> = ({
             <Play className="w-4 h-4 fill-current" />
             開始測驗回合
           </button>
-
-          {onEnterChallengeCode && (
-            <button
-              onClick={onEnterChallengeCode}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all active:scale-[.97]"
-            >
-              <Trophy className="w-4 h-4 text-amber-500" />
-              輸入代碼參加競賽 / 查榜
-            </button>
-          )}
 
           {dueWords.length > 0 && (
             <button

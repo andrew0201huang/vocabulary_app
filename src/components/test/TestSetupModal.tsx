@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Sparkles, Volume2, Headphones, Filter, Trophy } from 'lucide-react';
+import { Play, Sparkles, Volume2, Headphones, Filter } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { RoundConfig, WordItem } from '../../types/vocabulary';
 import { isWordDueForReview } from '../../services/spacedRepetition';
@@ -10,7 +10,6 @@ interface TestSetupModalProps {
   onStartRound: (config: RoundConfig) => void;
   words: WordItem[];
   allTags: string[];
-  onOpenChallenge?: (tag?: string) => void;
 }
 
 export const TestSetupModal: React.FC<TestSetupModalProps> = ({
@@ -19,7 +18,6 @@ export const TestSetupModal: React.FC<TestSetupModalProps> = ({
   onStartRound,
   words,
   allTags,
-  onOpenChallenge,
 }) => {
   const [wordCount, setWordCount] = useState<number>(10);
   const [filterMode, setFilterMode] = useState<RoundConfig['filterMode']>('due');
@@ -158,20 +156,6 @@ export const TestSetupModal: React.FC<TestSetupModalProps> = ({
                   <option key={tag} value={tag}>{tag}（{getTagCount(tag)} 個）</option>
                 ))}
               </select>
-              {onOpenChallenge && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenChallenge(customTag);
-                  }}
-                  className="shrink-0 text-xs px-2.5 py-1.5 rounded-lg border font-semibold flex items-center gap-1 text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-300 transition-colors"
-                  title="為此標籤發起雲端排行榜競賽"
-                >
-                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                  發起競賽
-                </button>
-              )}
             </div>
           )}
         </div>

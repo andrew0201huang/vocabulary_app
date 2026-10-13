@@ -405,7 +405,6 @@ export const App: React.FC = () => {
                 onOpenSetupModal={() => setIsSetupModalOpen(true)}
                 onQuickStart={handleStartRound}
                 onGoToBank={() => setActiveTab('bank')}
-                onEnterChallengeCode={handleOpenChallengeByPrompt}
               />
             )}
           </>
@@ -447,8 +446,6 @@ export const App: React.FC = () => {
               });
               setActiveTab('test');
             }}
-            onShareTag={(tag) => setShareTag(tag)}
-            onStartOnlineChallenge={(tag) => setOnlineChallengeTag(tag)}
           />
         )}
 
@@ -563,7 +560,6 @@ export const App: React.FC = () => {
         onStartRound={handleStartRound}
         words={words}
         allTags={stats.allTags}
-        onOpenChallenge={(tag) => setOnlineChallengeTag(tag || stats.allTags[0] || '')}
       />
 
       <BatchAddModal
