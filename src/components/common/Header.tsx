@@ -1,10 +1,10 @@
 import React from 'react';
-import { BookOpen, BarChart3, Zap, Settings } from 'lucide-react';
+import { BookOpen, BarChart3, Zap, Settings, Trophy } from 'lucide-react';
 import { SyncStatusBadge } from '../sync/SyncStatusBadge';
 import { SyncStatus } from '../../types/vocabulary';
 import { AuthState } from '../../types/auth';
 
-export type TabType = 'test' | 'bank' | 'stats';
+export type TabType = 'test' | 'bank' | 'challenge' | 'stats';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -30,9 +30,10 @@ export const Header: React.FC<HeaderProps> = ({
   const user = authState.user;
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'test',  label: '測驗',   icon: <Zap className="w-4 h-4" /> },
-    { id: 'bank',  label: '單字庫', icon: <BookOpen className="w-4 h-4" /> },
-    { id: 'stats', label: '統計',   icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'test',      label: '測驗',   icon: <Zap className="w-4 h-4" /> },
+    { id: 'bank',      label: '單字庫', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'challenge', label: '競賽榜', icon: <Trophy className="w-4 h-4 text-amber-500" /> },
+    { id: 'stats',     label: '統計',   icon: <BarChart3 className="w-4 h-4" /> },
   ];
 
   return (

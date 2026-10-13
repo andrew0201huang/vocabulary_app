@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Trophy, Zap } from 'lucide-react';
 import { Header, TabType } from './components/common/Header';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { TestDashboard } from './components/test/TestDashboard';
@@ -451,6 +452,66 @@ export const App: React.FC = () => {
           />
         )}
 
+        {activeTab === 'challenge' && (
+          <div className="w-full max-w-2xl mx-auto flex flex-col gap-6 px-4 py-8 animate-fade-in">
+            <div className="text-center flex flex-col items-center gap-2">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 shadow-sm">
+                <Trophy className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900">單字競賽排行榜</h2>
+              <p className="text-sm text-slate-500 max-w-md">
+                挑選特定標籤發起線上拼寫挑戰賽，好友輸入代碼即可在同個即時排行榜切磋！
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                className="p-5 rounded-2xl border flex flex-col justify-between gap-4"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
+                <div>
+                  <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
+                    <Trophy className="w-4 h-4 text-amber-500" />
+                    發起新競賽
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    挑選你的單字庫標籤，自訂為期 1 週或無限制的線上競賽
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOnlineChallengeTag(stats.allTags[0] || '國小必備')}
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 shadow-sm transition-all"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  發起標籤競賽
+                </button>
+              </div>
+
+              <div
+                className="p-5 rounded-2xl border flex flex-col justify-between gap-4"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
+                <div>
+                  <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
+                    <Zap className="w-4 h-4 text-indigo-500" />
+                    參加競賽 / 查看榜單
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    輸入好友給你的 6 碼代碼，即刻下載題目挑戰排位
+                  </p>
+                </div>
+                <button
+                  onClick={handleOpenChallengeByPrompt}
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm border flex items-center justify-center gap-2 transition-all hover:bg-slate-50"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-1)' }}
+                >
+                  輸入 6 碼代碼
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'stats' && (
           <StatsView
             words={words}
@@ -502,6 +563,7 @@ export const App: React.FC = () => {
         onStartRound={handleStartRound}
         words={words}
         allTags={stats.allTags}
+        onOpenChallenge={(tag) => setOnlineChallengeTag(tag || stats.allTags[0] || '')}
       />
 
       <BatchAddModal
