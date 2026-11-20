@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Check, ShieldCheck, AlertCircle, LogIn, LogOut, Sparkles } from 'lucide-react';
+import { User, Check, ShieldCheck, AlertCircle, LogIn, LogOut, Sparkles, CloudCheck, Cloud, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { CurrentPlayer } from '../../services/firebaseChallengeService';
+import { SyncStatus } from '../../types/vocabulary';
 
 interface UserLoginModalProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface UserLoginModalProps {
   localUserName: string;
   localUserAvatar: string;
   onSaveLocalUser: (name: string, avatar: string) => void;
+  syncStatus?: SyncStatus;
+  onManualSync?: () => Promise<void>;
 }
 
 const AVATAR_OPTIONS = ['⚡', '🚀', '🦊', '🐼', '🎯', '🌟', '💡', '🦁', '🦉', '🎓'];
@@ -25,11 +28,14 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
   localUserName,
   localUserAvatar,
   onSaveLocalUser,
+  syncStatus = 'local_only',
+  onManualSync,
 }) => {
   const isGoogleLoggedIn = Boolean(currentPlayer && !currentPlayer.isAnonymous);
   const [userName, setUserName] = useState(localUserName || '一般學習者');
   const [selectedAvatar, setSelectedAvatar] = useState(localUserAvatar || '⚡');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +45,18 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
       setErrorMessage(null);
     }
   }, [isOpen, localUserName, localUserAvatar]);
+
+  const handleManualSyncClick = async () => {
+    if (!onManualSync) return;
+    setIsSyncing(true);
+    try {
+      await onManualSync();
+    } catch (err: any) {
+      setErrorMessage(err.message || '同步失敗');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleSaveGuest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +140,42 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
               </span>
             </div>
 
+            {/* Google Drive Sync Status Box */}
+            <div className="p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2">
+                {syncStatus === 'synced' ? (
+                  <CloudCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : syncStatus === 'syncing' || isSyncing ? (
+                  <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                ) : syncStatus === 'error' ? (
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                ) : (
+                  <Cloud className="w-4 h-4 text-amber-500 shrink-0" />
+                )}
+                <div className="flex flex-col">
+                  <span className="font-semibold text-slate-800">
+                    Google Drive 雲端同步：
+                    {syncStatus === 'synced' ? '已成功備份最新單字庫' : syncStatus === 'syncing' || isSyncing ? '同步中...' : syncStatus === 'error' ? '同步發生問題' : '尚未啟用 Drive 備份'}
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    單字庫與學習進度已直接存於個人 Google Drive 專屬隱藏空間 (appDataFolder)
+                  </span>
+                </div>
+              </div>
+
+              {onManualSync && (
+                <button
+                  type="button"
+                  onClick={handleManualSyncClick}
+                  disabled={isSyncing}
+                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-slate-50 text-indigo-600 shrink-0 shadow-sm"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  {isSyncing ? '同步中...' : '手動備份'}
+                </button>
+              )}
+            </div>
+
             {/* Feature Perks */}
             <div className="p-3.5 rounded-xl border bg-indigo-50/50 border-indigo-100 flex flex-col gap-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-indigo-700">
@@ -129,9 +183,10 @@ export const UserLoginModal: React.FC<UserLoginModalProps> = ({
                 <span>已解鎖全站雲端連線特權：</span>
               </div>
               <ul className="space-y-1 text-slate-600 list-disc pl-4">
+                <li><strong className="text-slate-800">Google Drive 雲端同步：</strong>單字庫異動、測驗熟練度自動即時備份至個人 Google Drive</li>
                 <li><strong className="text-slate-800">發起線上競賽：</strong>可在「🏆 競賽榜」挑選單字庫發起比賽邀請好友</li>
                 <li><strong className="text-slate-800">雲端排行榜：</strong>挑戰成績將直接以您的 Google 名稱即時登上排位</li>
-                <li><strong className="text-slate-800">多裝置管理：</strong>您發起的競賽將自動綁定並同步至任何登入此帳號的裝置</li>
+                <li><strong className="text-slate-800">多裝置管理：</strong>您發起與參加過的競賽將自動綁定並同步至任何裝置</li>
               </ul>
             </div>
 

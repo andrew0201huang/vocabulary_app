@@ -3,6 +3,8 @@ import { Trophy, Clock, Share2, Copy, Check, LogIn } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { WordItem, AppSettings } from '../../types/vocabulary';
 import { createOnlineChallenge, CurrentPlayer, loginWithGoogle } from '../../services/firebaseChallengeService';
+import { authService } from '../../services/googleAuthService';
+import { storageService } from '../../services/storageService';
 
 interface CreateOnlineChallengeModalProps {
   isOpen: boolean;
@@ -203,8 +205,18 @@ export const CreateOnlineChallengeModal: React.FC<CreateOnlineChallengeModalProp
                   type="button"
                   onClick={async () => {
                     try {
-                      await loginWithGoogle();
-                      onToast('success', 'Google 登入成功！');
+                      const player = await loginWithGoogle();
+                      if (player.accessToken) {
+                        authService.setGoogleSession({
+                          uid: player.uid,
+                          name: player.displayName,
+                          email: player.email,
+                          avatar: player.photoURL,
+                          accessToken: player.accessToken,
+                        });
+                        storageService.syncWithGoogleDrive();
+                      }
+                      onToast('success', 'Google 登入成功！已連線 Google Drive');
                     } catch (e: any) {
                       onToast('error', '登入失敗', e.message);
                     }

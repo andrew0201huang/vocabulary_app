@@ -9,6 +9,8 @@ import {
   loginAnonymouslyWithNickname,
   loginWithGoogle,
 } from '../../services/firebaseChallengeService';
+import { authService } from '../../services/googleAuthService';
+import { storageService } from '../../services/storageService';
 import { formatSeconds } from '../../utils/timeUtils';
 
 interface ChallengeLobbyModalProps {
@@ -65,7 +67,17 @@ export const ChallengeLobbyModal: React.FC<ChallengeLobbyModalProps> = ({
     try {
       setIsLoggingIn(true);
       const player = await loginWithGoogle();
-      onToast('success', 'Google 登入成功', `歡迎參賽，${player.displayName}！`);
+      if (player.accessToken) {
+        authService.setGoogleSession({
+          uid: player.uid,
+          name: player.displayName,
+          email: player.email,
+          avatar: player.photoURL,
+          accessToken: player.accessToken,
+        });
+        storageService.syncWithGoogleDrive();
+      }
+      onToast('success', 'Google 登入成功', `歡迎參賽，${player.displayName}！已連線 Google Drive`);
     } catch (err: any) {
       onToast('error', 'Google 登入取消或失敗', err.message);
     } finally {

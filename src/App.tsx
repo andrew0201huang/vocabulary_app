@@ -18,6 +18,7 @@ import { useVocabulary } from './hooks/useVocabulary';
 import { useAuth } from './hooks/useAuth';
 import { RoundConfig, RoundSummary, WordItem } from './types/vocabulary';
 import { storageService } from './services/storageService';
+import { authService } from './services/googleAuthService';
 import { speechService } from './services/speechService';
 import { ShareTagModal } from './components/share/ShareTagModal';
 import { SharedPackModal } from './components/share/SharedPackModal';
@@ -324,8 +325,14 @@ export const App: React.FC = () => {
 
   // Sync Action
   const handleManualSync = async () => {
-    if (authState.authType !== 'google' || !authState.accessToken) {
-      setIsUserLoginModalOpen(true);
+    const currentAuth = authService.getAuthState();
+    if (!currentAuth.isAuthenticated || !currentAuth.accessToken) {
+      addToast('info', '請登入 Google 帳號以啟用 Google Drive 備份');
+      try {
+        await handleUnifiedGoogleLogin();
+      } catch {
+        // user cancelled
+      }
       return;
     }
     const success = await syncNow();
@@ -346,7 +353,27 @@ export const App: React.FC = () => {
     try {
       const player = await loginWithGoogle();
       loginLocal(player.displayName, player.photoURL || '⚡');
-      addToast('success', 'Google 登入成功！', `歡迎回來，${player.displayName}`);
+
+      if (player.accessToken) {
+        authService.setGoogleSession({
+          uid: player.uid,
+          name: player.displayName,
+          email: player.email,
+          avatar: player.photoURL,
+          accessToken: player.accessToken,
+        });
+
+        // Immediately trigger full sync with Google Drive
+        const synced = await storageService.syncWithGoogleDrive();
+        if (synced) {
+          addToast('success', 'Google 登入與雲端硬碟同步成功！', '已將單字庫備份至您的 Google Drive (appDataFolder)');
+        } else {
+          const err = storageService.getLastSyncError();
+          addToast('info', 'Google 登入成功', err ? `Google Drive 備份提示：${err}` : `歡迎回來，${player.displayName}`);
+        }
+      } else {
+        addToast('success', 'Google 登入成功！', `歡迎回來，${player.displayName}`);
+      }
     } catch (err: any) {
       addToast('error', 'Google 登入失敗', err.message);
       throw err;
@@ -356,7 +383,9 @@ export const App: React.FC = () => {
   const handleUnifiedGoogleLogout = async () => {
     try {
       await logoutFirebase();
+      authService.logout();
       loginLocal('一般學習者', '⚡');
+      storageService.setSyncStatus('local_only');
       addToast('info', '已登出 Google 帳號');
     } catch (err: any) {
       addToast('error', '登出失敗', err.message);
@@ -699,6 +728,8 @@ export const App: React.FC = () => {
         onSaveLocalUser={(name, avatar) => {
           handleLocalLogin(name, avatar);
         }}
+        syncStatus={syncStatus}
+        onManualSync={handleManualSync}
       />
 
       {/* Modals */}

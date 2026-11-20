@@ -79,6 +79,7 @@ export interface CurrentPlayer {
   isAnonymous: boolean;
   photoURL?: string | null;
   email?: string | null;
+  accessToken?: string;
 }
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
@@ -131,8 +132,12 @@ export async function loginAnonymouslyWithNickname(nickname: string): Promise<Cu
 
 export async function loginWithGoogle(): Promise<CurrentPlayer> {
   const provider = new GoogleAuthProvider();
+  // Request Google Drive appData scope so the app can backup vocabulary_data.json to Google Drive
+  provider.addScope('https://www.googleapis.com/auth/drive.appdata');
   provider.setCustomParameters({ prompt: 'select_account' });
   const cred = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(cred);
+  const accessToken = credential?.accessToken;
   const user = cred.user;
   const name = user.displayName || 'Google 玩家';
   localStorage.setItem('speedvocab_player_name', name);
@@ -142,6 +147,7 @@ export async function loginWithGoogle(): Promise<CurrentPlayer> {
     isAnonymous: false,
     photoURL: user.photoURL,
     email: user.email,
+    accessToken,
   };
 }
 

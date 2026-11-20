@@ -3,6 +3,8 @@ import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 import { getInitialStarterWords } from '../data/sampleData';
 import { googleDriveService } from './googleDriveService';
 import { googleAuthService } from './googleAuthService';
+import { db, auth as firebaseAuth } from './firebaseChallengeService';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const STORAGE_KEY = 'speedvocab_data_v1';
 const SETTINGS_KEY = 'speedvocab_settings';
@@ -217,6 +219,20 @@ export class StorageService {
         if (found) {
           fileId = found.id;
           googleAuthService.setDriveFileId(fileId);
+        } else {
+          // Check if user has backup in Firestore
+          try {
+            const currentUser = firebaseAuth.currentUser;
+            if (currentUser && !currentUser.isAnonymous) {
+              const fsSnap = await getDoc(doc(db, 'users', currentUser.uid, 'backup', 'wordBank'));
+              if (fsSnap.exists()) {
+                const fsData = fsSnap.data() as StorageData;
+                if (fsData && fsData.words && fsData.words.length > 0) {
+                  this.mergeRemoteData(fsData);
+                }
+              }
+            }
+          } catch {}
         }
       }
 
@@ -244,11 +260,47 @@ export class StorageService {
       this.saveToLocalStorage();
       this.lastSyncError = null;
       this.setSyncStatus('synced');
+
+      // Also backup to Cloud Firestore in background
+      try {
+        const currentUser = firebaseAuth.currentUser;
+        if (currentUser && !currentUser.isAnonymous) {
+          await setDoc(
+            doc(db, 'users', currentUser.uid, 'backup', 'wordBank'),
+            {
+              words: this.data.words,
+              roundHistory: this.data.roundHistory,
+              lastSyncedAt: this.data.lastSyncedAt,
+            },
+            { merge: true }
+          );
+        }
+      } catch (fsErr) {
+        console.warn('[Firestore backup notice]', fsErr);
+      }
+
       return true;
     } catch (err: any) {
       console.error('Google Drive Sync error:', err);
       this.lastSyncError = err.message || '未知同步錯誤';
       this.setSyncStatus('error');
+
+      // Attempt Firestore backup even if Drive failed
+      try {
+        const currentUser = firebaseAuth.currentUser;
+        if (currentUser && !currentUser.isAnonymous) {
+          await setDoc(
+            doc(db, 'users', currentUser.uid, 'backup', 'wordBank'),
+            {
+              words: this.data.words,
+              roundHistory: this.data.roundHistory,
+              lastSyncedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        }
+      } catch {}
+
       return false;
     }
   }

@@ -114,6 +114,41 @@ export class AuthService {
   }
 
   /**
+   * Set Google session with OAuth access token (from Firebase or GIS)
+   */
+  public setGoogleSession(params: {
+    uid: string;
+    name: string;
+    email?: string | null;
+    avatar?: string | null;
+    accessToken?: string | null;
+    expiresInSeconds?: number;
+  }) {
+    const expiresIn = params.expiresInSeconds || 3599;
+    const expiresAt = Date.now() + expiresIn * 1000;
+
+    const user: UserProfile = {
+      id: params.uid,
+      name: params.name || 'Google 學習者',
+      email: params.email || undefined,
+      avatar: params.avatar || '🌐',
+      authType: 'google',
+      createdAt: this.authState.user?.createdAt || new Date().toISOString(),
+    };
+
+    this.authState = {
+      isAuthenticated: true,
+      user,
+      authType: 'google',
+      accessToken: params.accessToken || this.authState.accessToken || null,
+      expiresAt: params.accessToken ? expiresAt : this.authState.expiresAt,
+      driveFileId: this.authState.driveFileId,
+    };
+
+    this.saveAuth();
+  }
+
+  /**
    * Set or update local user profile
    */
   public setLocalUser(name: string, avatar: string = '⚡'): UserProfile {
